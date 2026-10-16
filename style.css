@@ -89,13 +89,6 @@ button[type="submit"] {
   font-weight: 600;
 }
 
-/* Häkchen in der Akzentfarbe */
-input[type="checkbox"] {
-  accent-color: var(--akzent);
-  width: 22px;
-  height: 22px;
-  vertical-align: middle;
-}
 
 
 /* ===== Untere Leiste ===== */
@@ -111,7 +104,8 @@ nav {
 
 nav button {
   flex: 1;                       /* alle vier Knöpfe gleich breit */
-  padding: 16px 4px;
+  padding: 16px 2px;
+  font-size: 14px;               /* klein genug, dass „Affirmationen“ passt */
   border: none;
   border-radius: 0;
   background: none;
@@ -126,79 +120,204 @@ nav button.aktiv {
 }
 
 
-/* ===== Listen (Checkliste und ToDos sehen gleich aus) ===== */
-#checkliste-liste,
-#todo-liste {
+/* Kleine Erklärtexte */
+.hinweis {
+  color: var(--text-leise);
+  font-size: 14px;
+}
+
+/* Unauffällige Knöpfe wie „Habits bearbeiten“ oder „Prüfen“ */
+.nebenknopf {
+  display: block;
+  margin: 8px 0 12px;
+}
+
+/* Große Textfelder (Import, Affirmationen bearbeiten) */
+textarea {
+  display: block;
+  width: 100%;
+  box-sizing: border-box;
+  font: inherit;
+  font-size: 15px;
+  color: var(--text);
+  background: var(--karte);
+  border: 1px solid var(--rand);
+  border-radius: 10px;
+  padding: 10px 12px;
+  margin: 8px 0;
+}
+
+/* Aufklapp-Kästen (Import, Affirmationen bearbeiten) */
+#import,
+#affirmationen-bearbeiten {
+  margin-top: 16px;
+  padding: 12px 14px;
+  background: var(--karte);
+  border: 1px solid var(--rand);
+  border-radius: 12px;
+}
+
+#import summary,
+#affirmationen-bearbeiten summary {
+  cursor: pointer;
+  color: var(--text-leise);
+}
+
+
+/* ===== Habits ===== */
+#habit-liste {
   list-style: none;
   padding: 0;
   margin: 0 0 16px;
 }
 
-#checkliste-liste li,
-#todo-liste li {
+#habit-liste li {
   display: flex;
   align-items: center;
-  gap: 8px;
-  background: var(--karte);
-  border: 1px solid var(--rand);
-  border-radius: 12px;
-  padding: 0 8px 0 12px;
-  margin-bottom: 8px;
+  gap: 4px;
+  margin-bottom: 6px;
 }
 
-#checkliste-liste label,
-#todo-liste label {
+/* Jedes Habit ist ein großer Knopf über die ganze Breite */
+#habit-liste button.habit {
   flex: 1;                       /* nimmt den ganzen freien Platz */
-  padding: 14px 0;
-  font-size: 18px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  text-align: left;
+  padding: 10px 12px;
+  font-size: 17px;
+  border-radius: 12px;
 }
 
-/* Die kleinen Knöpfe ✏️ und ✕ in den Zeilen: unauffällig */
-#checkliste-liste button,
-#todo-liste button {
+/* Das Kästchen links: leer, ✓ oder ½ */
+.kaestchen {
+  flex: none;
+  width: 26px;
+  height: 26px;
+  border: 2px solid var(--rand);
+  border-radius: 7px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: bold;
+}
+
+/* Erledigt: Kästchen voll in der Akzentfarbe */
+#habit-liste .erledigt .kaestchen {
+  background: var(--akzent);
+  border-color: var(--akzent);
+  color: var(--karte);
+}
+
+/* Teilweise: Kästchen mit farbigem Rand */
+#habit-liste .teilweise .kaestchen {
+  border-color: var(--akzent);
+  color: var(--akzent);
+}
+
+/* ✏️ und ✕ nur im Bearbeiten-Modus zeigen */
+#habit-liste button.bearbeiten {
+  display: none;
   border: none;
   background: none;
   color: var(--text-leise);
 }
 
+#habit-liste.bearbeiten-modus button.bearbeiten {
+  display: block;
+}
 
-/* ===== Formulare zum Hinzufügen ===== */
-#checkliste-neu,
-#todo-neu {
+/* Formular zum Hinzufügen */
+#habit-neu {
   display: flex;
-  flex-wrap: wrap;
   gap: 8px;
   margin-bottom: 16px;
 }
 
-#checkliste-neu input {
+#habit-neu input {
   flex: 1;
 }
 
-#todo-neu-text {
-  flex: 1 1 100%;                /* Textfeld: eigene Zeile, volle Breite */
+/* Glücks-Rating */
+#happy {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  background: var(--karte);
+  border: 1px solid var(--rand);
+  border-radius: 12px;
+  padding: 12px 14px;
 }
 
-#todo-neu-datum {
-  flex: 1;
+#happy-wert {
+  font-size: 22px;
+  font-weight: bold;
+  color: var(--akzent);
+}
+
+#happy-regler {
+  flex: 1 1 100%;
+  accent-color: var(--akzent);
+  padding: 0;
+  border: none;
+  margin-top: 8px;
+}
+
+#happy-regler.unbewertet {
+  opacity: 0.4;                  /* blass, solange heute noch nicht bewertet */
+}
+
+#import-uebernehmen {
+  background: var(--akzent);
+  border-color: var(--akzent);
+  color: var(--karte);
+  font-weight: 600;
 }
 
 
-/* ===== ToDos ===== */
-#todo-liste small {
-  color: var(--text-leise);
+/* ===== Affirmationen ===== */
+#affirmationen-text ul {
+  list-style: none;
+  padding: 0;
+  margin: 0;
 }
 
-/* Erledigt: blass und durchgestrichen */
-#todo-liste li.erledigt label {
-  color: var(--text-leise);
-  text-decoration: line-through;
+#affirmationen-text li {
+  font-size: 18px;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--rand);
 }
 
-/* Überfällig: rot */
-#todo-liste li.ueberfaellig label,
-#todo-liste li.ueberfaellig small {
-  color: var(--warnung);
+/* Die besondere Zeile am Ende („! …“) */
+.hervorgehoben {
+  margin: 20px 0;
+  padding: 16px;
+  font-size: 19px;
+  font-weight: 600;
+  text-align: center;
+  background: var(--fertig);
+  border: 1px solid var(--fertig-rand);
+  border-radius: 14px;
+}
+
+#affirmationen-gelesen {
+  display: block;
+  width: 100%;
+  margin-top: 8px;
+  padding: 14px;
+  font-weight: 600;
+  background: var(--akzent);
+  border-color: var(--akzent);
+  color: var(--karte);
+}
+
+/* Nach dem Antippen: dezent, damit der Lächel-Kasten auffälliger bleibt */
+#affirmationen-gelesen.fertig {
+  background: var(--karte);
+  border-color: var(--rand);
+  color: var(--akzent);
 }
 
 
@@ -273,5 +392,5 @@ nav button.aktiv {
 /* ===== Hilfsklasse ===== */
 /* Wer diese Klasse hat, wird nicht angezeigt (für die Tab-Navigation) */
 .versteckt {
-  display: none;
+  display: none !important; /* !important = gewinnt immer, auch gegen Regeln mit #id */
 }

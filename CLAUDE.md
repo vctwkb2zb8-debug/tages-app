@@ -7,11 +7,15 @@ Eine persönliche Tages-App als **Progressive Web App (PWA)**:
 - speichert alle Daten **nur lokal auf dem Gerät** (IndexedDB oder localStorage)
 - **kein Server, keine Anmeldung, keine Verbindung nach außen**
 
-### Funktionen
-1. **Abend-Checkliste** – tägliche Punkte zum Abhaken (Start: Sport, Mahlzeiten, Dehnen). Punkte lassen sich hinzufügen, umbenennen und entfernen. Jeder Tag wird gespeichert.
+### Funktionen (Stand 16.10.2026)
+1. **Habits** (früher „Checkliste“) – 15 tägliche Gewohnheiten aus Lars' Gewohnheitstracker, je Tag mit drei Zuständen: ✓ erledigt (`x`), ½ teilweise (`/`), leer. Habits lassen sich hinzufügen, umbenennen und entfernen. Dazu ein tägliches **Happy-Rating** (1–10, halbe Schritte) und ein **Import** für den alten Verlauf aus der Notizen-App (Tabelle einfügen, wird nur lokal gelesen).
 2. **Dankbarkeitstagebuch** – jeden Abend 3× „Wofür ich dankbar bin“ und 3× „Was ich heute für mich getan habe“. Ältere Tage lassen sich ansehen.
-3. **ToDos** – Liste mit Hinzufügen, Abhaken, Löschen, optional mit Fälligkeitsdatum.
+3. **Affirmationen** – Lars' Sätze zum morgendlichen Durchlesen; „Heute gelesen ✓“ hakt das Habit „Affirmationen“ ab. Der Text liegt **nur auf dem Gerät** (nicht im Code), Format: ein Satz pro Zeile, `#` = Überschrift, `!` = hervorgehoben.
 4. **Tagesansicht** als Startseite – zeigt, was heute noch offen ist.
+
+Die ToDos wurden am 16.10.2026 auf Lars' Wunsch entfernt (alte ToDo-Daten bleiben im Speicher unter `todos`, werden aber nicht mehr angezeigt).
+
+Speicher-Schlüssel: `checkliste-punkte` (Liste der Habits, alter Name bewusst behalten), `habits-tage`, `happy`, `tagebuch`, `affirmationen-text`.
 
 ### Fertig ist Stufe 1, wenn …
 - alle vier Funktionen offline auf Lars' Handy laufen,
@@ -32,6 +36,9 @@ Lars lernt programmieren. Claude baut die App **mit** ihm, nicht **für** ihn.
 - Dateien klein und übersichtlich halten (z. B. `index.html`, `style.css`, `app.js`, später `manifest.json`, `service-worker.js`).
 - Keine externen Bibliotheken, keine CDNs, keine Schriftarten aus dem Netz – alles muss offline laufen.
 - Datenschutz: Tagebuchdaten sind privat und **verlassen niemals das Gerät**. Kein Tracking, keine Analytics, keine `fetch`-Aufrufe an fremde Server.
+- Der Code ist **öffentlich** auf GitHub (https://github.com/vctwkb2zb8-debug/tages-app, live unter https://vctwkb2zb8-debug.github.io/tages-app/). Darum **niemals** persönliche Inhalte in den Code oder ins Repo: keine Affirmationen-Texte, kein Habit-Verlauf, keine Ratings, keine Testdaten aus Lars' echten Daten. Die Habit-Namen als Vorlage hat Lars ausdrücklich freigegeben.
+- Beim Testen im Browser-Pane immer zuerst prüfen, dass der Tab auf `http://localhost:8000` steht – nie Testdaten auf der Live-Adresse anlegen.
+- Commits als `343493141+vctwkb2zb8-debug@users.noreply.github.com` (private Mailadresse nicht veröffentlichen).
 - Datum immer als lokales Datum im Format `JJJJ-MM-TT` als Schlüssel für Tagesdaten.
 - Lokal testen über einen einfachen lokalen Webserver (Service Worker brauchen `http://localhost` oder HTTPS, nicht `file://`).
 - Commit-Nachrichten auf Deutsch, kurz und klar.

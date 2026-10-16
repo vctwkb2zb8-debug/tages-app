@@ -23,20 +23,42 @@
   <section id="heute">
     <h2>Heute</h2>
     <p id="heute-datum"></p>
-    <!-- Die drei Kästen füllt app.js automatisch -->
+    <!-- Die Kästen füllt app.js automatisch -->
     <div id="heute-kaesten"></div>
   </section>
 
-  <section id="checkliste">
-    <h2>Checkliste</h2>
-    <!-- Die Punkte füllt app.js hier automatisch hinein -->
-    <ul id="checkliste-liste"></ul>
+  <section id="habits">
+    <h2>Habits</h2>
+    <p class="hinweis">Tippen: leer → ✓ erledigt → ½ teilweise → leer</p>
+    <!-- Die Habits füllt app.js hier automatisch hinein -->
+    <ul id="habit-liste"></ul>
 
-    <!-- Neuen Punkt hinzufügen -->
-    <form id="checkliste-neu">
-      <input id="checkliste-neu-name" placeholder="Neuer Punkt, z. B. Lesen" required>
+    <!-- Tägliches Glücks-Rating -->
+    <div id="happy">
+      <label for="happy-regler">Wie happy bin ich heute?</label>
+      <output id="happy-wert">–</output>
+      <input id="happy-regler" type="range" min="1" max="10" step="0.5" value="7">
+    </div>
+
+    <!-- Bearbeiten: Habits hinzufügen, umbenennen, entfernen -->
+    <button id="habits-bearbeiten-knopf" class="nebenknopf">Habits bearbeiten</button>
+    <form id="habit-neu" class="versteckt">
+      <input id="habit-neu-name" placeholder="Neues Habit, z. B. Wasser trinken" required>
       <button type="submit">Hinzufügen</button>
     </form>
+
+    <!-- Alten Verlauf aus der Notizen-App übernehmen (passiert nur auf diesem Gerät) -->
+    <details id="import">
+      <summary>Verlauf importieren</summary>
+      <p class="hinweis">
+        Kopiere die ganze Tabelle aus deiner Notizen-App (mit der Datumszeile oben)
+        und füge sie hier ein. Die Daten bleiben nur auf diesem Gerät.
+      </p>
+      <textarea id="import-text" rows="6" placeholder="Tabelle hier einfügen …"></textarea>
+      <button id="import-pruefen" class="nebenknopf">Prüfen</button>
+      <p id="import-vorschau"></p>
+      <button id="import-uebernehmen" class="versteckt">Übernehmen</button>
+    </details>
   </section>
 
   <section id="tagebuch">
@@ -60,25 +82,30 @@
     <div id="tagebuch-archiv"></div>
   </section>
 
-  <section id="todos">
-    <h2>ToDos</h2>
-    <!-- Neue Aufgabe: Text und (freiwillig) ein Datum -->
-    <form id="todo-neu">
-      <input id="todo-neu-text" placeholder="Neue Aufgabe" required>
-      <input id="todo-neu-datum" type="date" title="Fällig am (freiwillig)">
-      <button type="submit">Hinzufügen</button>
-    </form>
+  <section id="affirmationen">
+    <h2>Affirmationen</h2>
+    <!-- Die Sätze füllt app.js hier automatisch hinein -->
+    <div id="affirmationen-text"></div>
+    <button id="affirmationen-gelesen">Heute gelesen ✓</button>
 
-    <!-- Die Aufgaben füllt app.js hier automatisch hinein -->
-    <ul id="todo-liste"></ul>
+    <!-- Text bearbeiten: wird nur auf diesem Gerät gespeichert -->
+    <details id="affirmationen-bearbeiten">
+      <summary>Affirmationen bearbeiten</summary>
+      <p class="hinweis">
+        Ein Satz pro Zeile. Zeilen mit <b>#</b> am Anfang werden Zwischenüberschriften,
+        Zeilen mit <b>!</b> am Anfang werden hervorgehoben.
+      </p>
+      <textarea id="affirmationen-eingabe" rows="12"></textarea>
+      <button id="affirmationen-speichern">Speichern</button>
+    </details>
   </section>
 
   <!-- Untere Leiste zum Umschalten. data-bereich sagt, welche section der Knopf zeigt. -->
   <nav>
     <button data-bereich="heute">Heute</button>
-    <button data-bereich="checkliste">Checkliste</button>
+    <button data-bereich="habits">Habits</button>
     <button data-bereich="tagebuch">Tagebuch</button>
-    <button data-bereich="todos">ToDos</button>
+    <button data-bereich="affirmationen">Affirmationen</button>
   </nav>
 
   <!-- Das JavaScript kommt ganz ans Ende, damit die Bereiche schon geladen sind -->
