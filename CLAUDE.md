@@ -25,6 +25,7 @@ Lars lernt programmieren. Claude baut die App **mit** ihm, nicht **für** ihn.
 - Danach Lars' Code **prüfen**: erst loben, was gut ist, dann Fehler erklären und Lars möglichst selbst korrigieren lassen. Nicht stillschweigend überschreiben.
 - Kleine Schritte: lieber zehn kleine, verständliche Commits als ein großer.
 - Nach jedem Schritt: im Browser zeigen, gemeinsam testen, dann committen.
+- **Erklär-Stil:** Jede Antwort beginnt mit einem kurzen, lockeren Kasten „💡 Worum geht's?“ (2–4 Sätze, Alltagsvergleiche, keine Fachwörter ohne Erklärung). Antworten **kurz** halten, sonst wird es schnell zu viel. Code nur knapp erklären, Details auf Nachfrage. Lieber eine kleine Aufgabe auf einmal als viele.
 - Code einfach und gut lesbar halten, lieber etwas länger als „clever“. Kommentare auf Deutsch, wo sie beim Verstehen helfen.
 
 ## Technische Regeln

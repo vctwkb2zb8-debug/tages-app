@@ -1,0 +1,33 @@
+/* Grundlayout – das richtige Aussehen machen wir in Schritt 10 */
+body {
+  font-family: system-ui, sans-serif;
+  background: white;
+  color: #222;
+  margin: 0;
+  padding: 16px 16px 80px; /* unten Platz lassen für die Leiste */
+}
+
+/* Die Leiste klebt unten am Bildschirm */
+nav {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  display: flex;
+}
+
+nav button {
+  flex: 1; /* alle vier Knöpfe gleich breit */
+  padding: 16px 4px;
+  font-size: 16px;
+}
+
+/* Wer diese Klasse hat, wird nicht angezeigt */
+.versteckt {
+  display: none;
+}
+
+/* Der Knopf des gerade offenen Bereichs */
+nav button.aktiv {
+  font-weight: bold;
+}

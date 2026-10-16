@@ -6,6 +6,8 @@
   <!-- Damit die Seite auf dem Handy nicht winzig verkleinert dargestellt wird -->
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Tages-App</title>
+  <!-- Verbindet die Seite mit der Datei für das Aussehen -->
+  <link rel="stylesheet" href="style.css">
 </head>
 <body>
   <h1>Meine Tages-App</h1>
@@ -29,5 +31,16 @@
     <h2>ToDos</h2>
     <p>Hier stehen deine Aufgaben.</p>
   </section>
+
+  <!-- Untere Leiste zum Umschalten. data-bereich sagt, welche section der Knopf zeigt. -->
+  <nav>
+    <button data-bereich="heute">Heute</button>
+    <button data-bereich="checkliste">Checkliste</button>
+    <button data-bereich="tagebuch">Tagebuch</button>
+    <button data-bereich="todos">ToDos</button>
+  </nav>
+
+  <!-- Das JavaScript kommt ganz ans Ende, damit die Bereiche schon geladen sind -->
+  <script src="app.js"></script>
 </body>
 </html>
