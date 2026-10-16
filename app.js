@@ -275,7 +275,68 @@ for (const feld of document.querySelectorAll(".tagebuch-feld")) {
   });
 }
 
+// Macht aus "2026-10-16" den Text "Freitag, 16. Oktober 2026"
+function langesDatum(datum) {
+  const tag = new Date(datum + "T00:00"); // T00:00 = Mitternacht in deiner Zeitzone
+  return tag.toLocaleDateString("de-DE", {
+    weekday: "long", day: "numeric", month: "long", year: "numeric"
+  });
+}
+
+// Baut aus einer Liste von Einträgen eine Aufzählung (leere Zeilen weglassen)
+function eintragsListe(eintraege) {
+  const liste = document.createElement("ul");
+  for (const eintrag of eintraege) {
+    if (eintrag.trim() !== "") {
+      const punkt = document.createElement("li");
+      punkt.textContent = eintrag;
+      liste.append(punkt);
+    }
+  }
+  return liste;
+}
+
+// Zeigt alle früheren Tage, der neueste zuerst. Ein Tipp aufs Datum klappt ihn auf.
+function zeigeTagebuchArchiv() {
+  const tagebuch = laden("tagebuch", {});
+  const archiv = document.getElementById("tagebuch-archiv");
+  archiv.innerHTML = "";
+
+  // Alle Daten außer heute, sortiert vom neuesten zum ältesten
+  const fruehereTage = Object.keys(tagebuch)
+    .filter(function (datum) { return datum !== heute(); })
+    .sort()
+    .reverse();
+
+  if (fruehereTage.length === 0) {
+    archiv.textContent = "Noch keine früheren Einträge.";
+    return;
+  }
+
+  for (const datum of fruehereTage) {
+    const tag = tagebuch[datum];
+
+    // <details> ist ein eingebautes Aufklapp-Element, <summary> seine Überschrift
+    const block = document.createElement("details");
+    const ueberschrift = document.createElement("summary");
+    ueberschrift.textContent = langesDatum(datum);
+
+    const dankbarTitel = document.createElement("strong");
+    dankbarTitel.textContent = "Dankbar für:";
+    const fuerMichTitel = document.createElement("strong");
+    fuerMichTitel.textContent = "Für mich getan:";
+
+    block.append(
+      ueberschrift,
+      dankbarTitel, eintragsListe(tag.dankbar),
+      fuerMichTitel, eintragsListe(tag.fuerMich)
+    );
+    archiv.append(block);
+  }
+}
+
 zeigeTagebuch();
+zeigeTagebuchArchiv();
 
 
 // ===== Navigation =====

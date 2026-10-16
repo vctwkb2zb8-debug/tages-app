@@ -139,6 +139,28 @@ nav button {
   font-size: 16px;
 }
 
+/* Tagebuch-Archiv: jeder Tag ein aufklappbarer Kasten */
+#tagebuch-archiv details {
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  padding: 10px 12px;
+  margin-bottom: 8px;
+}
+
+#tagebuch-archiv summary {
+  cursor: pointer;
+  font-size: 16px;
+}
+
+#tagebuch-archiv strong {
+  display: block;
+  margin-top: 10px;
+}
+
+#tagebuch-archiv ul {
+  margin: 4px 0;
+}
+
 /* Wer diese Klasse hat, wird nicht angezeigt */
 .versteckt {
   display: none;
