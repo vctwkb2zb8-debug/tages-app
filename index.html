@@ -25,6 +25,17 @@
     <p id="heute-datum"></p>
     <!-- Die Kästen füllt app.js automatisch -->
     <div id="heute-kaesten"></div>
+
+    <!-- Wochenrückblick: aufklappbar, sonntags automatisch offen -->
+    <details id="wochenrueckblick">
+      <summary>📊 Wochenrückblick</summary>
+      <div class="tagesleiste">
+        <button id="woche-zurueck" title="Vorherige Woche">‹</button>
+        <span id="woche-anzeige"></span>
+        <button id="woche-vor" title="Nächste Woche">›</button>
+      </div>
+      <div id="wochenrueckblick-inhalt"></div>
+    </details>
   </section>
 
   <section id="habits">

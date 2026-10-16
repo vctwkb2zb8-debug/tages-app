@@ -115,8 +115,10 @@ for (const knopf of document.querySelectorAll(".zu-heute")) {
 //   "happy":             Glücks-Rating pro Tag, z. B. { "2026-10-16": 7.5 }
 
 const HABIT_VORLAGE = [
+  { id: "aufstehen", name: "Aufstehen 8:00" },
   { id: "affirmationen", name: "Affirmationen" },
   { id: "fruehstueck", name: "Frühstück" },
+  { id: "lernen", name: "1 h Lernen" },
   { id: "kein-handy", name: "Kein Handy 1 h nach Aufstehen" },
   { id: "mittagessen", name: "Mittagessen" },
   { id: "abendessen", name: "Abendessen" },
@@ -139,6 +141,23 @@ if (!laden("habits-vorlage-eingerichtet", false)) {
   const eigene = altePunkte.filter(function (p) { return p.id.startsWith("p"); });
   speichern("checkliste-punkte", HABIT_VORLAGE.concat(eigene));
   speichern("habits-vorlage-eingerichtet", true);
+  speichern("habits-morgen-ergaenzt", true); // die Vorlage enthält die Morgen-Habits schon
+}
+
+// Einmalige Ergänzung (16.10.2026): „Aufstehen 8:00“ ganz oben und „1 h Lernen“
+// nach „Frühstück“ einfügen – für alle, die die Vorlage schon vorher hatten.
+if (!laden("habits-morgen-ergaenzt", false)) {
+  const habits = laden("checkliste-punkte", HABIT_VORLAGE);
+  const hat = function (id) { return habits.some(function (h) { return h.id === id; }); };
+  if (!hat("aufstehen")) {
+    habits.unshift({ id: "aufstehen", name: "Aufstehen 8:00" }); // unshift = vorne einfügen
+  }
+  if (!hat("lernen")) {
+    const nachFruehstueck = habits.findIndex(function (h) { return h.id === "fruehstueck"; }) + 1;
+    habits.splice(nachFruehstueck, 0, { id: "lernen", name: "1 h Lernen" }); // splice = an Stelle einfügen
+  }
+  speichern("checkliste-punkte", habits);
+  speichern("habits-morgen-ergaenzt", true);
 }
 
 // Was zeigt ein Habit je nach Zustand an?
@@ -598,11 +617,241 @@ function heuteKasten(titel, text, eintraege, zielBereich, fertig) {
   return kasten;
 }
 
+// --- Hilfen für Wochen ---
+
+// Wochentag als Zahl: Montag = 0 … Sonntag = 6
+function wochentag(datum) {
+  return (new Date(datum + "T00:00").getDay() + 6) % 7; // getDay() zählt ab Sonntag = 0
+}
+
+// Der Montag der Woche, in der das Datum liegt
+function montagVon(datum) {
+  return verschiebeTag(datum, -wochentag(datum));
+}
+
+// Kalenderwoche nach deutscher Zählung (ISO): Woche 1 enthält den ersten Donnerstag des Jahres
+function kalenderwoche(datum) {
+  const donnerstag = new Date(verschiebeTag(montagVon(datum), 3) + "T00:00");
+  const jahresanfang = new Date(donnerstag.getFullYear(), 0, 1);
+  // Erst auf ganze Tage runden (wegen Sommerzeit fehlt sonst eine Stunde), dann Wochen zählen
+  const tage = Math.round((donnerstag - jahresanfang) / 86400000);
+  return Math.floor(tage / 7) + 1;
+}
+
+// Wie oft wurde ein Habit von „von“ bis „bis“ (je einschließlich) voll erledigt (x)?
+function zaehleHabit(id, von, bis) {
+  const alleTage = laden("habits-tage", {});
+  let anzahl = 0;
+  for (let datum = von; datum <= bis; datum = verschiebeTag(datum, 1)) {
+    if (alleTage[datum] && alleTage[datum][id] === "x") anzahl++;
+  }
+  return anzahl;
+}
+
+
+// --- Morgenroutine-Challenge ---
+const ROUTINE_START = "2026-10-16";
+const ROUTINE_TAGE = 14;
+const ROUTINE_HABITS = ["aufstehen", "affirmationen", "fruehstueck", "lernen"];
+
+function morgenroutineKasten(tagHabits) {
+  // Welcher Tag der Challenge ist heute? (1 bis 14, sonst kein Kasten)
+  const tagNr = Math.round((new Date(heute() + "T00:00") - new Date(ROUTINE_START + "T00:00")) / 86400000) + 1;
+  if (tagNr < 1 || tagNr > ROUTINE_TAGE) return null;
+
+  const habits = ladeHabits();
+  const offen = ROUTINE_HABITS
+    .filter(function (id) { return tagHabits[id] !== "x"; })
+    .map(function (id) {
+      const habit = habits.find(function (h) { return h.id === id; });
+      return habit ? habit.name : id;
+    });
+  if (tagNr === ROUTINE_TAGE) {
+    offen.push("Letzter Tag – kurzer Rückblick: Was behältst du bei?");
+  }
+
+  return heuteKasten(
+    "Morgenroutine – Tag " + tagNr + "/" + ROUTINE_TAGE,
+    offen.length === 0 ? "Alles geschafft" : "Aufstehen 8:00 · Affirmationen · Frühstück · 1 h Lernen",
+    offen,
+    "habits",
+    offen.length === 0
+  );
+}
+
+
+// --- Wochenziele Sport ---
+// Mobility = Habit „Dehnen/Haltung“. Gezählt werden nur volle Häkchen (✓), nicht ½.
+const SPORTZIELE = [
+  { id: "laufen", name: "Laufen", soll: 2 },
+  { id: "krafttraining", name: "Kraft", soll: 1 },
+  { id: "dehnen", name: "Mobility", soll: 2 }
+];
+
+// Stand der Sportziele in einer Woche bis zu einem Tag, z. B. [{ name, soll, ist }]
+function sportStand(montag, bis) {
+  return SPORTZIELE.map(function (ziel) {
+    return { name: ziel.name, soll: ziel.soll, ist: zaehleHabit(ziel.id, montag, bis) };
+  });
+}
+
+function sportKasten() {
+  const stand = sportStand(montagVon(heute()), heute());
+  const tageUebrig = 7 - wochentag(heute()); // heute mitgezählt, bis Sonntag
+
+  const zeile = stand.map(function (z) {
+    return z.name + " " + z.ist + "/" + z.soll + (z.ist >= z.soll ? " (erfüllt)" : "");
+  }).join(" · ");
+
+  const hinweise = [];
+  for (const z of stand) {
+    const offen = z.soll - z.ist;
+    if (offen > 0) {
+      const text = "Noch " + offen + "× " + z.name + " offen, " +
+        tageUebrig + (tageUebrig === 1 ? " Tag" : " Tage") + " übrig";
+      hinweise.push(offen >= tageUebrig ? "Achtung: " + text : text);
+    }
+  }
+
+  return heuteKasten("Sport diese Woche", zeile, hinweise, "habits", hinweise.length === 0);
+}
+
+
+// --- Schlafenszeit ---
+// Licht aus = Wecker − 8 Stunden, auf 15 Minuten gerundet. Wird ab 17 Uhr angezeigt.
+function lichtAus(wecker) {
+  const teile = wecker.split(":");
+  let minuten = Number(teile[0]) * 60 + Number(teile[1]) - 8 * 60;
+  minuten = Math.round(minuten / 15) * 15;
+  minuten = (minuten + 24 * 60) % (24 * 60); // über Mitternacht zurückrechnen
+  return String(Math.floor(minuten / 60)).padStart(2, "0") + ":" + String(minuten % 60).padStart(2, "0");
+}
+
+function schlafKasten() {
+  if (new Date().getHours() < 17) return null;
+  const wecker = laden("wecker", "08:00");
+
+  // Kein Knopf wie die anderen Kästen, weil ein Eingabefeld drin ist
+  const kasten = document.createElement("div");
+  kasten.className = "heute-kasten schlaf";
+
+  const ueberschrift = document.createElement("strong");
+  ueberschrift.textContent = "😴 Schlafenszeit";
+  const text = document.createElement("span");
+  text.textContent = "Licht aus um ca. " + lichtAus(wecker) + " (Wecker ";
+
+  const weckerFeld = document.createElement("input");
+  weckerFeld.type = "time";
+  weckerFeld.value = wecker;
+  weckerFeld.addEventListener("change", function () {
+    if (weckerFeld.value) {
+      speichern("wecker", weckerFeld.value);
+      zeigeHeute();
+    }
+  });
+
+  kasten.append(ueberschrift, text, weckerFeld, ")");
+  return kasten;
+}
+
+
+// --- Wochenrückblick ---
+let rueckblickMontag = montagVon(heute());
+
+function zeigeWochenrueckblick() {
+  const inhalt = document.getElementById("wochenrueckblick-inhalt");
+  inhalt.innerHTML = "";
+  const montag = rueckblickMontag;
+  const sonntag = verschiebeTag(montag, 6);
+  const bis = sonntag < heute() ? sonntag : heute(); // laufende Woche nur bis heute
+  const vorbei = sonntag <= heute();                 // ab Sonntag gilt die Woche als „abgeschlossen“
+
+  // Kopfzeile: ‹ KW 42 · 12.10.–18.10. ›
+  const kurz = function (d) { return d.slice(8, 10) + "." + d.slice(5, 7) + "."; };
+  document.getElementById("woche-anzeige").textContent =
+    "KW " + kalenderwoche(montag) + " · " + kurz(montag) + "–" + kurz(sonntag);
+  document.getElementById("woche-vor").disabled = montag === montagVon(heute());
+
+  // Sportziele
+  const sportTitel = document.createElement("h3");
+  sportTitel.textContent = "Sportziele";
+  const sport = sportStand(montag, bis).map(function (z) {
+    const zustand = z.ist >= z.soll ? "erfüllt" : (vorbei ? "verfehlt" : "offen");
+    return z.name + ": " + z.ist + "/" + z.soll + " – " + zustand;
+  });
+  inhalt.append(sportTitel, eintragsListe(sport));
+
+  // Happy-Rating: Durchschnitt dieser Woche und der Vorwoche
+  const happy = laden("happy", {});
+  const schnitt = function (von, bisTag) {
+    const werte = [];
+    for (let d = von; d <= bisTag; d = verschiebeTag(d, 1)) {
+      if (happy[d] !== undefined) werte.push(happy[d]);
+    }
+    if (werte.length === 0) return null;
+    const summe = werte.reduce(function (a, b) { return a + b; }, 0);
+    return Math.round(summe / werte.length * 10) / 10; // auf eine Nachkommastelle
+  };
+  const diese = schnitt(montag, bis);
+  const vorher = schnitt(verschiebeTag(montag, -7), verschiebeTag(montag, -1));
+  const happyTitel = document.createElement("h3");
+  happyTitel.textContent = "Happy-Rating";
+  const happyText = document.createElement("p");
+  happyText.textContent = diese === null
+    ? "Diese Woche noch keine Bewertung."
+    : "Durchschnitt " + deutscheZahl(diese) +
+      (vorher === null ? "" : " (Vorwoche " + deutscheZahl(vorher) + ")");
+  inhalt.append(happyTitel, happyText);
+
+  // Habits: wie oft geschafft?
+  const tageGesamt = Math.round((new Date(bis + "T00:00") - new Date(montag + "T00:00")) / 86400000) + 1;
+  const habitsTitel = document.createElement("h3");
+  habitsTitel.textContent = "Habits (" + tageGesamt + (tageGesamt === 1 ? " Tag)" : " Tage)");
+  const alleTage = laden("habits-tage", {});
+  const habitZeilen = ladeHabits().map(function (h) {
+    let halb = 0;
+    for (let d = montag; d <= bis; d = verschiebeTag(d, 1)) {
+      if (alleTage[d] && alleTage[d][h.id] === "/") halb++;
+    }
+    return h.name + ": " + zaehleHabit(h.id, montag, bis) + "/" + tageGesamt +
+      (halb > 0 ? " (+" + halb + "× ½)" : "");
+  });
+  inhalt.append(habitsTitel, eintragsListe(habitZeilen));
+
+  // Reflexion: pro Woche gespeichert
+  const reflexionTitel = document.createElement("h3");
+  reflexionTitel.textContent = "Was behalte ich bei? Was ändere ich?";
+  const feld = document.createElement("textarea");
+  feld.rows = 4;
+  feld.value = laden("wochen-reflexion", {})[montag] || "";
+  feld.addEventListener("input", function () {
+    const alle = laden("wochen-reflexion", {});
+    alle[montag] = feld.value;
+    speichern("wochen-reflexion", alle);
+  });
+  inhalt.append(reflexionTitel, feld);
+}
+
+document.getElementById("woche-zurueck").addEventListener("click", function () {
+  rueckblickMontag = verschiebeTag(rueckblickMontag, -7);
+  zeigeWochenrueckblick();
+});
+document.getElementById("woche-vor").addEventListener("click", function () {
+  rueckblickMontag = verschiebeTag(rueckblickMontag, 7);
+  zeigeWochenrueckblick();
+});
+
+
+// --- Startseite zusammenbauen ---
 function zeigeHeute() {
   document.getElementById("heute-datum").textContent = langesDatum(heute());
   const kaesten = document.getElementById("heute-kaesten");
   kaesten.innerHTML = "";
   const tagHabits = habitTag(heute());
+
+  // 0. Morgenroutine-Challenge (nur 16.–29.10.)
+  const routine = morgenroutineKasten(tagHabits);
+  if (routine) kaesten.append(routine);
 
   // 1. Affirmationen: heute schon gelesen?
   const gelesen = tagHabits["affirmationen"] === "x";
@@ -638,6 +887,20 @@ function zeigeHeute() {
     "tagebuch",
     ausgefuellt === 6
   ));
+
+  // 4. Sport diese Woche
+  kaesten.append(sportKasten());
+
+  // 5. Schlafenszeit (ab 17 Uhr)
+  const schlaf = schlafKasten();
+  if (schlaf) kaesten.append(schlaf);
+
+  // 6. Wochenrückblick: immer die aktuelle Woche; sonntags automatisch aufgeklappt
+  rueckblickMontag = montagVon(heute());
+  if (wochentag(heute()) === 6) {
+    document.getElementById("wochenrueckblick").open = true;
+  }
+  zeigeWochenrueckblick();
 }
 
 

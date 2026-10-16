@@ -11,7 +11,14 @@ Eine persönliche Tages-App als **Progressive Web App (PWA)**:
 1. **Habits** (früher „Checkliste“) – 15 tägliche Gewohnheiten aus Lars' Gewohnheitstracker, je Tag mit drei Zuständen: ✓ erledigt (`x`), ½ teilweise (`/`), leer. Habits lassen sich hinzufügen, umbenennen und entfernen. Dazu ein tägliches **Happy-Rating** (1–10, halbe Schritte) und ein **Import** für den alten Verlauf aus der Notizen-App (Tabelle einfügen, wird nur lokal gelesen).
 2. **Dankbarkeitstagebuch** – jeden Abend 3× „Wofür ich dankbar bin“ und 3× „Was ich heute für mich getan habe“. Ältere Tage lassen sich ansehen.
 3. **Affirmationen** – Lars' Sätze zum morgendlichen Durchlesen; „Heute gelesen ✓“ hakt das Habit „Affirmationen“ ab. Der Text liegt **nur auf dem Gerät** (nicht im Code), Format: ein Satz pro Zeile, `#` = Überschrift, `!` = hervorgehoben.
-4. **Tagesansicht** als Startseite – zeigt, was heute noch offen ist.
+4. **Tagesansicht** als Startseite – zeigt, was heute noch offen ist, plus (aus den Mail-Routinen übernommen):
+   - **Morgenroutine-Challenge** 16.–29.10.2026 („Tag X/14“: Aufstehen 8:00, Affirmationen, Frühstück, 1 h Lernen)
+   - **Sport diese Woche**: Laufen 2×, Kraft 1×, Mobility (= Habit „Dehnen/Haltung“) 2×, gezählt aus den Habits ab Montag, nur volle ✓
+   - **Schlafenszeit** ab 17 Uhr: Licht aus = Wecker − 8 h (Wecker einstellbar, Schlüssel `wecker`)
+   - **Wochenrückblick** (aufklappbar, sonntags offen): Sportziele erfüllt/verfehlt, Ø Happy vs. Vorwoche, Habits pro Woche, Reflexionsfeld (`wochen-reflexion`)
+5. Habits und Tagebuch haben eine **Datumsleiste** (‹ Heute ›) zum Nachtragen früherer Tage.
+
+Termine, Mails, Geburtstage, Wetter und Strava bleiben in den Mail-Routinen (Morgen 06:35, Abend 20:00 Mo–Sa, Wochenrückblick So 20:00), weil die App keinen Server und keine Google-/Strava-Anmeldung hat.
 
 Die ToDos wurden am 16.10.2026 auf Lars' Wunsch entfernt (alte ToDo-Daten bleiben im Speicher unter `todos`, werden aber nicht mehr angezeigt).
 
