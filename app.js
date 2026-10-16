@@ -62,11 +62,67 @@ function zeigeCheckliste() {
     const beschriftung = document.createElement("label");
     beschriftung.append(haken, " " + punkt.name);
 
+    // Knopf ✏️ zum Umbenennen
+    const umbenennenKnopf = document.createElement("button");
+    umbenennenKnopf.textContent = "✏️";
+    umbenennenKnopf.title = "Umbenennen";
+    umbenennenKnopf.addEventListener("click", function () {
+      benennePunktUm(punkt.id);
+    });
+
+    // Knopf ✕ zum Entfernen
+    const entfernenKnopf = document.createElement("button");
+    entfernenKnopf.textContent = "✕";
+    entfernenKnopf.title = "Entfernen";
+    entfernenKnopf.addEventListener("click", function () {
+      entfernePunkt(punkt.id);
+    });
+
     const zeile = document.createElement("li");
-    zeile.append(beschriftung);
+    zeile.append(beschriftung, umbenennenKnopf, entfernenKnopf);
     liste.append(zeile);
   }
 }
+
+// Fügt einen neuen Punkt am Ende der Liste hinzu
+function fuegePunktHinzu(name) {
+  const punkte = laden("checkliste-punkte", STARTPUNKTE);
+  const neuerPunkt = { id: "p" + Date.now(), name: name }; // Date.now() = eindeutige Zahl
+  punkte.push(neuerPunkt);
+  speichern("checkliste-punkte", punkte);
+  zeigeCheckliste();
+}
+
+// Fragt nach einem neuen Namen und speichert ihn
+function benennePunktUm(id) {
+  const punkte = laden("checkliste-punkte", STARTPUNKTE);
+  const punkt = punkte.find(function (p) { return p.id === id; });
+  const neuerName = prompt("Neuer Name:", punkt.name);
+  if (neuerName && neuerName.trim() !== "") { // nicht abgebrochen und nicht leer
+    punkt.name = neuerName.trim();
+    speichern("checkliste-punkte", punkte);
+    zeigeCheckliste();
+  }
+}
+
+// Fragt nach und entfernt den Punkt dann aus der Liste
+function entfernePunkt(id) {
+  const punkte = laden("checkliste-punkte", STARTPUNKTE);
+  const punkt = punkte.find(function (p) { return p.id === id; });
+  if (confirm("„" + punkt.name + "“ wirklich entfernen?")) {
+    const uebrig = punkte.filter(function (p) { return p.id !== id; }); // alle außer diesem
+    speichern("checkliste-punkte", uebrig);
+    zeigeCheckliste();
+  }
+}
+
+// Formular „Hinzufügen“: beim Absenden neuen Punkt anlegen
+document.getElementById("checkliste-neu").addEventListener("submit", function (ereignis) {
+  ereignis.preventDefault(); // sonst lädt der Browser die Seite neu
+  const eingabe = document.getElementById("checkliste-neu-name");
+  fuegePunktHinzu(eingabe.value.trim());
+  eingabe.value = ""; // Feld wieder leeren
+});
 
 // Merkt sich für heute, ob ein Punkt abgehakt ist oder nicht
 function hakeAb(id, istErledigt) {

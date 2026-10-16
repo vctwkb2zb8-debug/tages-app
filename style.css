@@ -28,10 +28,34 @@ nav button {
   padding: 0;
 }
 
+/* Jede Zeile: Beschriftung links, Knöpfe rechts */
+#checkliste-liste li {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
 #checkliste-liste label {
-  display: block;
+  flex: 1; /* nimmt den ganzen freien Platz */
   padding: 12px 0;
   font-size: 18px;
+}
+
+#checkliste-liste button {
+  padding: 8px 12px;
+  font-size: 16px;
+}
+
+/* Formular zum Hinzufügen: Eingabefeld breit, Knopf daneben */
+#checkliste-neu {
+  display: flex;
+  gap: 8px;
+}
+
+#checkliste-neu input {
+  flex: 1;
+  padding: 10px;
+  font-size: 16px;
 }
 
 #checkliste-liste input {
