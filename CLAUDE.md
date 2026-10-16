@@ -18,7 +18,9 @@ Eine persönliche Tages-App als **Progressive Web App (PWA)**:
    - **Wochenrückblick** (aufklappbar, sonntags offen): Sportziele erfüllt/verfehlt, Ø Happy vs. Vorwoche, Habits pro Woche, Reflexionsfeld (`wochen-reflexion`)
 5. Habits und Tagebuch haben eine **Datumsleiste** (‹ Heute ›) zum Nachtragen früherer Tage.
 
-Termine, Mails, Geburtstage, Wetter und Strava bleiben in den Mail-Routinen (Morgen 06:35, Abend 20:00 Mo–Sa, Wochenrückblick So 20:00), weil die App keinen Server und keine Google-/Strava-Anmeldung hat.
+6. **App-Code aus der Mail** („📲 Aus Mail einfügen“ auf der Startseite): Morgen-Mail (06:35) und Abend-Mail (20:00 Mo–Sa) enthalten eine Zeile `TAGESAPP1.…` (Base64url-JSON, Format in `APP-CODE.md`). Die App zeigt daraus Termine, Wetter, Geburtstage, Antwort-Mails („Heute laut Mail“ / „Morgen laut Mail“), übernimmt die Weckzeit und hakt Strava-Einheiten als Habits ab (Laufen, Krafttraining, Schwimmen – nie Eigenes überschreiben). Gespeichert unter `mail-daten`, nur lokal.
+
+Die App selbst holt nichts aus dem Netz: Gmail, Kalender, Wetter und Strava liest nur die Mail-Routine; der Weg in die App ist das Kopieren des Codes (Variante A, gewählt am 16.10.2026). Eine automatische Variante (Routine legt Daten in ein privates Repo, App holt sie) wurde als „Variante B“ besprochen, aber nicht gebaut.
 
 Die ToDos wurden am 16.10.2026 auf Lars' Wunsch entfernt (alte ToDo-Daten bleiben im Speicher unter `todos`, werden aber nicht mehr angezeigt).
 

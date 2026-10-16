@@ -699,9 +699,18 @@ function sportKasten() {
   const stand = sportStand(montagVon(heute()), heute());
   const tageUebrig = 7 - wochentag(heute()); // heute mitgezählt, bis Sonntag
 
-  const zeile = stand.map(function (z) {
+  let zeile = stand.map(function (z) {
     return z.name + " " + z.ist + "/" + z.soll + (z.ist >= z.soll ? " (erfüllt)" : "");
   }).join(" · ");
+
+  // Gelaufene Kilometer dieser Woche laut Strava (aus dem neuesten Mail-Code)
+  const code = neuesterAppCode();
+  if (code && code.strava) {
+    const km = code.strava
+      .filter(function (e) { return e.typ === "laufen" && e.datum >= montagVon(heute()); })
+      .reduce(function (summe, e) { return summe + (e.km || 0); }, 0);
+    if (km > 0) zeile += " · " + deutscheZahl(Math.round(km * 10) / 10) + " km (Strava)";
+  }
 
   const hinweise = [];
   for (const z of stand) {
@@ -733,7 +742,7 @@ function schlafKasten() {
 
   // Kein Knopf wie die anderen Kästen, weil ein Eingabefeld drin ist
   const kasten = document.createElement("div");
-  kasten.className = "heute-kasten schlaf";
+  kasten.className = "heute-kasten neutral";
 
   const ueberschrift = document.createElement("strong");
   ueberschrift.textContent = "😴 Schlafenszeit";
@@ -842,6 +851,191 @@ document.getElementById("woche-vor").addEventListener("click", function () {
 });
 
 
+// --- App-Code aus der Mail ---
+// Die Morgen- und Abend-Mail enthalten eine Zeile „TAGESAPP1.…“. Dahinter steckt
+// JSON (Termine, Wetter, Geburtstage, Antwort-Mails, Strava, Wecker), verpackt in
+// Base64 – einer Schreibweise nur aus Buchstaben, Zahlen, - und _, damit es eine
+// einzige Zeile ohne Leerzeichen ist. Gespeichert wird nur auf diesem Gerät.
+// Das genaue Format steht in APP-CODE.md.
+
+// Base64url → normales Base64 → Bytes → Text (UTF-8, damit Umlaute stimmen) → JSON
+function entpacke(code) {
+  let base64 = code.replace(/-/g, "+").replace(/_/g, "/");
+  while (base64.length % 4 !== 0) base64 += "=";
+  const zeichen = atob(base64);
+  const bytes = Uint8Array.from(zeichen, function (z) { return z.charCodeAt(0); });
+  return JSON.parse(new TextDecoder("utf-8", { fatal: true }).decode(bytes));
+}
+
+// Liest den Code aus einem Text. Gibt das JSON-Objekt zurück oder wirft einen Fehler.
+function leseAppCode(text) {
+  const start = text.indexOf("TAGESAPP1.");
+  if (start === -1) throw new Error("Kein App-Code gefunden");
+
+  // Manche Mail-Apps brechen lange Zeilen um. Darum sammeln wir den Code-Anfang und
+  // die direkt folgenden Zeilen, die nur aus Code-Zeichen bestehen …
+  const zeilen = text.slice(start + "TAGESAPP1.".length).split(/\r?\n/);
+  const stuecke = [];
+  for (const zeile of zeilen) {
+    const teil = zeile.trim();
+    if (!/^[A-Za-z0-9_-]+$/.test(teil)) {
+      if (stuecke.length === 0) stuecke.push(teil.match(/^[A-Za-z0-9_-]*/)[0]);
+      break;
+    }
+    stuecke.push(teil);
+  }
+
+  // … und probieren dann von der längsten Variante abwärts, welche sich entpacken lässt.
+  // So stört es nicht, wenn direkt darunter z. B. ein einzelnes Wort steht.
+  for (let anzahl = stuecke.length; anzahl >= 1; anzahl--) {
+    let daten;
+    try {
+      daten = entpacke(stuecke.slice(0, anzahl).join(""));
+    } catch (fehler) {
+      continue; // passt nicht – eine Zeile weniger probieren
+    }
+    if (daten.v !== 1 || (daten.art !== "morgen" && daten.art !== "abend")) {
+      throw new Error("Unbekannte Code-Version");
+    }
+    return daten;
+  }
+  throw new Error("App-Code beschädigt");
+}
+
+// Welches Habit hakt eine Strava-Einheit ab?
+const STRAVA_HABIT = { laufen: "laufen", kraft: "krafttraining", schwimmen: "schwimmen" };
+
+// Speichert den Code und übernimmt Strava-Einheiten und Weckzeit
+function uebernehmeAppCode(daten) {
+  const mail = laden("mail-daten", {});
+  mail[daten.art] = daten;
+  speichern("mail-daten", mail);
+
+  // Strava: Habit für den Tag abhaken – aber nie etwas überschreiben, was du selbst eingetragen hast
+  const alleTage = laden("habits-tage", {});
+  for (const einheit of daten.strava || []) {
+    const id = STRAVA_HABIT[einheit.typ];
+    if (!id || einheit.datum > heute()) continue;
+    alleTage[einheit.datum] = alleTage[einheit.datum] || {};
+    if (!alleTage[einheit.datum][id]) {
+      alleTage[einheit.datum][id] = "x";
+    }
+  }
+  speichern("habits-tage", alleTage);
+
+  // Abends bringt die Mail die passende Weckzeit für morgen mit
+  if (daten.art === "abend" && daten.wecker) {
+    speichern("wecker", daten.wecker);
+  }
+}
+
+// Der neueste Code (morgens oder abends), z. B. für die Strava-Kilometer
+function neuesterAppCode() {
+  const mail = laden("mail-daten", {});
+  const codes = [mail.morgen, mail.abend].filter(Boolean);
+  codes.sort(function (a, b) { return a.erstellt < b.erstellt ? 1 : -1; });
+  return codes[0] || null;
+}
+
+// "2026-10-18" → "Sa., 18.10."
+function kurzesDatum(datum) {
+  return new Date(datum + "T00:00").toLocaleDateString("de-DE", {
+    weekday: "short", day: "2-digit", month: "2-digit"
+  });
+}
+
+// Ein Kasten nur zum Lesen (kein Knopf)
+function infoKasten(titel, text, eintraege) {
+  const kasten = document.createElement("div");
+  kasten.className = "heute-kasten neutral";
+  const ueberschrift = document.createElement("strong");
+  ueberschrift.textContent = titel;
+  const beschreibung = document.createElement("span");
+  beschreibung.textContent = text;
+  kasten.append(ueberschrift, beschreibung, eintragsListe(eintraege));
+  return kasten;
+}
+
+function wetterText(wetter) {
+  if (!wetter) return "";
+  return wetter.ort + ": " + wetter.min + "–" + wetter.max + " °C · Regen " + wetter.regen + " %";
+}
+
+function terminZeilen(termine) {
+  return (termine || []).map(function (t) {
+    const zeit = t.start ? t.start + (t.ende ? "–" + t.ende : "") + " " : "Ganztägig: ";
+    return (t.ueberschneidung ? "Achtung: Überschneidung – " : "") + zeit + t.titel;
+  });
+}
+
+// Kasten „Heute laut Mail“ (Morgen-Code von heute)
+function mailHeuteKasten() {
+  const code = laden("mail-daten", {}).morgen;
+  if (!code || code.fuer !== heute()) return null;
+
+  const zeilen = terminZeilen(code.termine);
+  for (const m of code.antwortMails || []) {
+    zeilen.push("Antworten: " + m.von + " – " + m.betreff);
+  }
+  for (const g of code.geburtstage || []) {
+    zeilen.push("Geburtstag " + kurzesDatum(g.datum) + ": " + g.name);
+  }
+  if (zeilen.length === 0) zeilen.push("Keine Termine heute");
+
+  return infoKasten("📬 Heute laut Mail · Stand " + code.erstellt.slice(11, 16), wetterText(code.wetter), zeilen);
+}
+
+// Kasten „Morgen laut Mail“ (Abend-Code, der sich auf morgen bezieht)
+function mailMorgenKasten() {
+  const code = laden("mail-daten", {}).abend;
+  if (!code || code.fuer !== verschiebeTag(heute(), 1)) return null;
+
+  const zeilen = terminZeilen(code.termine);
+  for (const g of code.geburtstage || []) {
+    zeilen.push("Geburtstag: " + g.name + " – Nachricht oder Geschenk bereit?");
+  }
+  if (zeilen.length === 0) zeilen.push("Keine Termine morgen");
+
+  return infoKasten("🌙 Morgen laut Mail · Stand " + code.erstellt.slice(11, 16), wetterText(code.wetter), zeilen);
+}
+
+// Knopf „Aus Mail einfügen“: erst die Zwischenablage versuchen, sonst ein Textfeld zeigen
+function zeigeMailMeldung(text) {
+  document.getElementById("mailcode-meldung").textContent = text;
+}
+
+function verarbeiteMailText(text) {
+  const daten = leseAppCode(text); // wirft einen Fehler, wenn der Text keinen gültigen Code enthält
+  uebernehmeAppCode(daten);
+  document.getElementById("mailcode-feld").classList.add("versteckt");
+  document.getElementById("mailcode-text").value = "";
+  zeigeMailMeldung("Übernommen ✓ " + (daten.art === "morgen" ? "Morgen" : "Abend") +
+    "-Mail von " + daten.erstellt.slice(11, 16) + " Uhr");
+  zeigeHabits();
+  zeigeHeute();
+}
+
+document.getElementById("mailcode-knopf").addEventListener("click", async function () {
+  try {
+    // Zwischenablage lesen – iOS fragt dabei kurz „Einfügen?“
+    const text = await navigator.clipboard.readText();
+    verarbeiteMailText(text);
+  } catch (fehler) {
+    // Keine Erlaubnis oder kein Code in der Zwischenablage → zum Einfügen per Hand
+    document.getElementById("mailcode-feld").classList.remove("versteckt");
+    zeigeMailMeldung("");
+  }
+});
+
+document.getElementById("mailcode-uebernehmen").addEventListener("click", function () {
+  try {
+    verarbeiteMailText(document.getElementById("mailcode-text").value);
+  } catch (fehler) {
+    zeigeMailMeldung("Das ist kein gültiger App-Code. Hast du die ganze Zeile ab „TAGESAPP1.“ kopiert?");
+  }
+});
+
+
 // --- Startseite zusammenbauen ---
 function zeigeHeute() {
   document.getElementById("heute-datum").textContent = langesDatum(heute());
@@ -849,7 +1043,11 @@ function zeigeHeute() {
   kaesten.innerHTML = "";
   const tagHabits = habitTag(heute());
 
-  // 0. Morgenroutine-Challenge (nur 16.–29.10.)
+  // 0. Aus der Morgen-Mail: Termine, Wetter, Geburtstage, Antwort-Mails
+  const mailHeute = mailHeuteKasten();
+  if (mailHeute) kaesten.append(mailHeute);
+
+  // 0b. Morgenroutine-Challenge (nur 16.–29.10.)
   const routine = morgenroutineKasten(tagHabits);
   if (routine) kaesten.append(routine);
 
@@ -891,11 +1089,15 @@ function zeigeHeute() {
   // 4. Sport diese Woche
   kaesten.append(sportKasten());
 
-  // 5. Schlafenszeit (ab 17 Uhr)
+  // 5. Aus der Abend-Mail: was morgen ansteht
+  const mailMorgen = mailMorgenKasten();
+  if (mailMorgen) kaesten.append(mailMorgen);
+
+  // 6. Schlafenszeit (ab 17 Uhr)
   const schlaf = schlafKasten();
   if (schlaf) kaesten.append(schlaf);
 
-  // 6. Wochenrückblick: immer die aktuelle Woche; sonntags automatisch aufgeklappt
+  // 7. Wochenrückblick: immer die aktuelle Woche; sonntags automatisch aufgeklappt
   rueckblickMontag = montagVon(heute());
   if (wochentag(heute()) === 6) {
     document.getElementById("wochenrueckblick").open = true;
