@@ -142,6 +142,109 @@ function hakeAb(id, istErledigt) {
 zeigeCheckliste();
 
 
+// ===== ToDos =====
+// Gespeichert unter "todos" als Liste, z. B.
+//   [{ id: "t123", text: "Einkaufen", erledigt: false, faellig: "2026-10-20" }]
+// faellig ist "" (leer), wenn kein Datum gewählt wurde.
+
+// Macht aus "2026-10-20" den deutschen Text "20.10.2026"
+function deutschesDatum(datum) {
+  const teile = datum.split("-"); // ["2026", "10", "20"]
+  return teile[2] + "." + teile[1] + "." + teile[0];
+}
+
+// Sortier-Regel: offene Aufgaben vor erledigten, dann nach Datum (ohne Datum ganz hinten)
+function vergleicheTodos(a, b) {
+  if (a.erledigt !== b.erledigt) {
+    return a.erledigt ? 1 : -1;
+  }
+  const datumA = a.faellig || "9999-99-99"; // kein Datum? → so tun, als wäre es ganz spät
+  const datumB = b.faellig || "9999-99-99";
+  return datumA.localeCompare(datumB); // Text-Vergleich klappt, weil Jahr-Monat-Tag
+}
+
+// Baut die Aufgabenliste neu auf
+function zeigeTodos() {
+  const todos = laden("todos", []);
+  todos.sort(vergleicheTodos);
+
+  const liste = document.getElementById("todo-liste");
+  liste.innerHTML = "";
+
+  for (const todo of todos) {
+    const haken = document.createElement("input");
+    haken.type = "checkbox";
+    haken.checked = todo.erledigt;
+    haken.addEventListener("change", function () {
+      hakeTodoAb(todo.id, haken.checked);
+    });
+
+    const beschriftung = document.createElement("label");
+    beschriftung.append(haken, " " + todo.text);
+
+    // Fälligkeitsdatum anzeigen, falls vorhanden
+    if (todo.faellig) {
+      const datum = document.createElement("small");
+      datum.textContent = " · bis " + deutschesDatum(todo.faellig);
+      beschriftung.append(datum);
+    }
+
+    const loeschenKnopf = document.createElement("button");
+    loeschenKnopf.textContent = "✕";
+    loeschenKnopf.title = "Löschen";
+    loeschenKnopf.addEventListener("click", function () {
+      loescheTodo(todo.id);
+    });
+
+    const zeile = document.createElement("li");
+    zeile.append(beschriftung, loeschenKnopf);
+
+    // Klassen fürs Aussehen: erledigt = durchgestrichen, ueberfaellig = rot
+    if (todo.erledigt) {
+      zeile.classList.add("erledigt");
+    } else if (todo.faellig && todo.faellig < heute()) {
+      zeile.classList.add("ueberfaellig");
+    }
+
+    liste.append(zeile);
+  }
+}
+
+function fuegeTodoHinzu(text, faellig) {
+  const todos = laden("todos", []);
+  todos.push({ id: "t" + Date.now(), text: text, erledigt: false, faellig: faellig });
+  speichern("todos", todos);
+  zeigeTodos();
+}
+
+function hakeTodoAb(id, istErledigt) {
+  const todos = laden("todos", []);
+  const todo = todos.find(function (t) { return t.id === id; });
+  todo.erledigt = istErledigt;
+  speichern("todos", todos);
+  zeigeTodos(); // neu sortieren: erledigte rutschen nach unten
+}
+
+function loescheTodo(id) {
+  const todos = laden("todos", []);
+  const uebrig = todos.filter(function (t) { return t.id !== id; });
+  speichern("todos", uebrig);
+  zeigeTodos();
+}
+
+// Formular „Hinzufügen“
+document.getElementById("todo-neu").addEventListener("submit", function (ereignis) {
+  ereignis.preventDefault();
+  const textFeld = document.getElementById("todo-neu-text");
+  const datumFeld = document.getElementById("todo-neu-datum");
+  fuegeTodoHinzu(textFeld.value.trim(), datumFeld.value);
+  textFeld.value = "";
+  datumFeld.value = "";
+});
+
+zeigeTodos();
+
+
 // ===== Navigation =====
 
 // Zeigt nur den Bereich mit diesem Namen, z. B. zeigeBereich("todos")

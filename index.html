@@ -36,7 +36,15 @@
 
   <section id="todos">
     <h2>ToDos</h2>
-    <p>Hier stehen deine Aufgaben.</p>
+    <!-- Neue Aufgabe: Text und (freiwillig) ein Datum -->
+    <form id="todo-neu">
+      <input id="todo-neu-text" placeholder="Neue Aufgabe" required>
+      <input id="todo-neu-datum" type="date" title="Fällig am (freiwillig)">
+      <button type="submit">Hinzufügen</button>
+    </form>
+
+    <!-- Die Aufgaben füllt app.js hier automatisch hinein -->
+    <ul id="todo-liste"></ul>
   </section>
 
   <!-- Untere Leiste zum Umschalten. data-bereich sagt, welche section der Knopf zeigt. -->
