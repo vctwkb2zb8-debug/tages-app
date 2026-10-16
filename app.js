@@ -339,6 +339,75 @@ zeigeTagebuch();
 zeigeTagebuchArchiv();
 
 
+// ===== Startseite „Heute“ =====
+
+// Baut einen Kasten mit Überschrift, Text und (falls vorhanden) einer Liste.
+// Ein Tipp auf den Kasten öffnet den passenden Bereich.
+function heuteKasten(titel, text, eintraege, zielBereich, fertig) {
+  const kasten = document.createElement("button");
+  kasten.className = "heute-kasten";
+  if (fertig) {
+    kasten.classList.add("fertig");
+  }
+
+  const ueberschrift = document.createElement("strong");
+  ueberschrift.textContent = (fertig ? "✅ " : "⏳ ") + titel;
+  const beschreibung = document.createElement("span");
+  beschreibung.textContent = text;
+  kasten.append(ueberschrift, beschreibung, eintragsListe(eintraege));
+
+  kasten.addEventListener("click", function () {
+    zeigeBereich(zielBereich);
+  });
+  return kasten;
+}
+
+function zeigeHeute() {
+  document.getElementById("heute-datum").textContent = langesDatum(heute());
+  const kaesten = document.getElementById("heute-kaesten");
+  kaesten.innerHTML = "";
+
+  // 1. Checkliste: was ist noch nicht abgehakt?
+  const punkte = laden("checkliste-punkte", STARTPUNKTE);
+  const heuteErledigt = laden("checkliste-tage", {})[heute()] || [];
+  const offenePunkte = punkte.filter(function (p) { return !heuteErledigt.includes(p.id); });
+  const anzahlErledigt = punkte.length - offenePunkte.length;
+  kaesten.append(heuteKasten(
+    "Checkliste",
+    anzahlErledigt + " von " + punkte.length + " erledigt",
+    offenePunkte.map(function (p) { return p.name; }),
+    "checkliste",
+    offenePunkte.length === 0
+  ));
+
+  // 2. Tagebuch: wie viele der 6 Zeilen sind ausgefüllt?
+  const tag = laden("tagebuch", {})[heute()] || leererTagebuchTag();
+  const alleZeilen = tag.dankbar.concat(tag.fuerMich);
+  const ausgefuellt = alleZeilen.filter(function (z) { return z.trim() !== ""; }).length;
+  kaesten.append(heuteKasten(
+    "Tagebuch",
+    ausgefuellt + " von 6 Zeilen ausgefüllt",
+    [],
+    "tagebuch",
+    ausgefuellt === 6
+  ));
+
+  // 3. ToDos: offen und heute fällig oder überfällig
+  const dringend = laden("todos", [])
+    .filter(function (t) { return !t.erledigt && t.faellig && t.faellig <= heute(); })
+    .sort(vergleicheTodos);
+  kaesten.append(heuteKasten(
+    "ToDos",
+    dringend.length === 0 ? "Heute nichts fällig" : dringend.length + " heute fällig oder überfällig",
+    dringend.map(function (t) {
+      return t.faellig < heute() ? t.text + " (überfällig)" : t.text;
+    }),
+    "todos",
+    dringend.length === 0
+  ));
+}
+
+
 // ===== Navigation =====
 
 // Zeigt nur den Bereich mit diesem Namen, z. B. zeigeBereich("todos")
@@ -352,7 +421,29 @@ function zeigeBereich(name) {
   // 2. Nur den gewählten Bereich wieder zeigen
   const gewaehlterBereich = document.getElementById(name);
   gewaehlterBereich.classList.remove("versteckt");
+
+  // 3. Den passenden Knopf unten hervorheben
+  for (const knopf of document.querySelectorAll("nav button")) {
+    knopf.classList.toggle("aktiv", knopf.dataset.bereich === name);
+  }
+
+  // 4. Die Startseite jedes Mal neu berechnen – in den anderen Bereichen kann sich ja was geändert haben
+  if (name === "heute") {
+    zeigeHeute();
+  }
 }
+
+// Wenn die App wieder in den Vordergrund kommt (z. B. am nächsten Morgen),
+// alles neu aufbauen – sonst stünde noch der gestrige Tag da.
+document.addEventListener("visibilitychange", function () {
+  if (document.visibilityState === "visible") {
+    zeigeCheckliste();
+    zeigeTodos();
+    zeigeTagebuch();
+    zeigeTagebuchArchiv();
+    zeigeHeute();
+  }
+});
 
 // Jeder Knopf in der Leiste ruft beim Antippen zeigeBereich auf
 const knoepfe = document.querySelectorAll("nav button");

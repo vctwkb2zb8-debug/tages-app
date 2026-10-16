@@ -161,6 +161,39 @@ nav button {
   margin: 4px 0;
 }
 
+/* Startseite: drei Kästen untereinander */
+#heute-datum {
+  color: #666;
+  margin-top: -8px;
+}
+
+.heute-kasten {
+  display: block;
+  width: 100%;
+  text-align: left;
+  font: inherit; /* Knöpfe haben sonst eine eigene, kleinere Schrift */
+  background: #fff8e1; /* hellgelb = noch offen */
+  border: 1px solid #f0d78c;
+  border-radius: 12px;
+  padding: 12px 14px;
+  margin-bottom: 12px;
+  cursor: pointer;
+}
+
+.heute-kasten.fertig {
+  background: #e8f5e9; /* hellgrün = erledigt */
+  border-color: #a5d6a7;
+}
+
+.heute-kasten strong {
+  display: block;
+  font-size: 18px;
+}
+
+.heute-kasten ul {
+  margin: 6px 0 0;
+}
+
 /* Wer diese Klasse hat, wird nicht angezeigt */
 .versteckt {
   display: none;
