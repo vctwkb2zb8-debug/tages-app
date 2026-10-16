@@ -1,155 +1,231 @@
-/* Grundlayout – das richtige Aussehen machen wir in Schritt 10 */
-body {
-  font-family: system-ui, sans-serif;
-  background: white;
-  color: #222;
-  margin: 0;
-  padding: 16px 16px 80px; /* unten Platz lassen für die Leiste */
+/* ===== Farbpalette =====
+   Alle Farben stehen hier an EINER Stelle (sogenannte CSS-Variablen).
+   Weiter unten wird nur noch mit var(--name) auf sie verwiesen.
+   Probier's aus: Ändere --akzent, und die ganze App bekommt eine neue Farbe. */
+:root {
+  --akzent: #2e7d6b;          /* Hauptfarbe: Knöpfe, aktiver Tab, Haken */
+  --hintergrund: #f4f5f2;     /* Seitenhintergrund */
+  --karte: #ffffff;           /* Hintergrund von Kästen und Feldern */
+  --text: #1f2421;
+  --text-leise: #6b726d;      /* Nebeninfos wie Datum */
+  --rand: #dde0dc;
+  --offen: #fff6dc;           /* Startseite: noch offen */
+  --offen-rand: #efd98f;
+  --fertig: #e3f3e8;          /* Startseite: erledigt */
+  --fertig-rand: #9fd1ae;
+  --warnung: #c62828;         /* überfällige ToDos */
+  color-scheme: light dark;   /* Datumsauswahl & Häkchen passen sich hell/dunkel an */
 }
 
-/* Die Leiste klebt unten am Bildschirm */
+/* Dunkelmodus: Wenn das Handy dunkel eingestellt ist, gelten diese Farben */
+@media (prefers-color-scheme: dark) {
+  :root {
+    --akzent: #6fcfb4;
+    --hintergrund: #141716;
+    --karte: #1f2321;
+    --text: #e8ebe9;
+    --text-leise: #9aa29d;
+    --rand: #343a37;
+    --offen: #3a3320;
+    --offen-rand: #6b5b2a;
+    --fertig: #1d3326;
+    --fertig-rand: #2f5d40;
+    --warnung: #ff8a80;
+  }
+}
+
+
+/* ===== Grundlayout ===== */
+body {
+  font-family: system-ui, sans-serif;
+  background: var(--hintergrund);
+  color: var(--text);
+  margin: 0 auto;
+  max-width: 600px;              /* auf großen Bildschirmen nicht zu breit */
+  padding: 16px 16px 96px;       /* unten Platz lassen für die Leiste */
+  line-height: 1.4;
+}
+
+h1 {
+  font-size: 22px;
+  margin: 8px 0 16px;
+}
+
+h2 {
+  font-size: 26px;
+  margin: 0 0 12px;
+}
+
+h3 {
+  font-size: 16px;
+  color: var(--text-leise);
+  margin: 24px 0 8px;
+}
+
+/* Alle Eingabefelder und Knöpfe: gleiche Grundform */
+input,
+button {
+  font: inherit;
+  color: var(--text);
+  background: var(--karte);
+  border: 1px solid var(--rand);
+  border-radius: 10px;
+}
+
+input {
+  padding: 10px 12px;
+}
+
+button {
+  padding: 8px 12px;
+  cursor: pointer;
+}
+
+/* Knöpfe „Hinzufügen“: in der Akzentfarbe */
+button[type="submit"] {
+  background: var(--akzent);
+  border-color: var(--akzent);
+  color: var(--karte);
+  font-weight: 600;
+}
+
+/* Häkchen in der Akzentfarbe */
+input[type="checkbox"] {
+  accent-color: var(--akzent);
+  width: 22px;
+  height: 22px;
+  vertical-align: middle;
+}
+
+
+/* ===== Untere Leiste ===== */
 nav {
   position: fixed;
   bottom: 0;
   left: 0;
   right: 0;
   display: flex;
+  background: var(--karte);
+  border-top: 1px solid var(--rand);
 }
 
 nav button {
-  flex: 1; /* alle vier Knöpfe gleich breit */
+  flex: 1;                       /* alle vier Knöpfe gleich breit */
   padding: 16px 4px;
-  font-size: 16px;
+  border: none;
+  border-radius: 0;
+  background: none;
+  color: var(--text-leise);
 }
 
-/* Checkliste: keine Aufzählungspunkte, große Tipp-Flächen */
-#checkliste-liste {
-  list-style: none;
-  padding: 0;
+/* Der Knopf des gerade offenen Bereichs */
+nav button.aktiv {
+  color: var(--akzent);
+  font-weight: bold;
+  box-shadow: inset 0 3px 0 var(--akzent); /* farbiger Strich oben */
 }
 
-/* Jede Zeile: Beschriftung links, Knöpfe rechts */
-#checkliste-liste li {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
 
-#checkliste-liste label {
-  flex: 1; /* nimmt den ganzen freien Platz */
-  padding: 12px 0;
-  font-size: 18px;
-}
-
-#checkliste-liste button {
-  padding: 8px 12px;
-  font-size: 16px;
-}
-
-/* Formular zum Hinzufügen: Eingabefeld breit, Knopf daneben */
-#checkliste-neu {
-  display: flex;
-  gap: 8px;
-}
-
-#checkliste-neu input {
-  flex: 1;
-  padding: 10px;
-  font-size: 16px;
-}
-
-#checkliste-liste input {
-  width: 22px;
-  height: 22px;
-  vertical-align: middle;
-}
-
-/* ToDos: gleiche Optik wie die Checkliste */
+/* ===== Listen (Checkliste und ToDos sehen gleich aus) ===== */
+#checkliste-liste,
 #todo-liste {
   list-style: none;
   padding: 0;
+  margin: 0 0 16px;
 }
 
+#checkliste-liste li,
 #todo-liste li {
   display: flex;
   align-items: center;
   gap: 8px;
+  background: var(--karte);
+  border: 1px solid var(--rand);
+  border-radius: 12px;
+  padding: 0 8px 0 12px;
+  margin-bottom: 8px;
 }
 
+#checkliste-liste label,
 #todo-liste label {
-  flex: 1;
-  padding: 12px 0;
+  flex: 1;                       /* nimmt den ganzen freien Platz */
+  padding: 14px 0;
   font-size: 18px;
 }
 
-#todo-liste input {
-  width: 22px;
-  height: 22px;
-  vertical-align: middle;
-}
-
+/* Die kleinen Knöpfe ✏️ und ✕ in den Zeilen: unauffällig */
+#checkliste-liste button,
 #todo-liste button {
-  padding: 8px 12px;
-  font-size: 16px;
+  border: none;
+  background: none;
+  color: var(--text-leise);
 }
 
-#todo-liste small {
-  color: #666;
-}
 
-/* Erledigt: grau und durchgestrichen */
-#todo-liste li.erledigt label {
-  color: #999;
-  text-decoration: line-through;
-}
-
-/* Überfällig: rot */
-#todo-liste li.ueberfaellig label,
-#todo-liste li.ueberfaellig small {
-  color: #c62828;
-}
-
-/* Formular: Textfeld oben über die ganze Breite, Datum und Knopf darunter */
+/* ===== Formulare zum Hinzufügen ===== */
+#checkliste-neu,
 #todo-neu {
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
+  margin-bottom: 16px;
 }
 
-#todo-neu input {
-  padding: 10px;
-  font-size: 16px;
+#checkliste-neu input {
+  flex: 1;
 }
 
 #todo-neu-text {
-  flex: 1 1 100%;
+  flex: 1 1 100%;                /* Textfeld: eigene Zeile, volle Breite */
 }
 
 #todo-neu-datum {
   flex: 1;
 }
 
-/* Tagebuch: Felder untereinander, über die ganze Breite */
+
+/* ===== ToDos ===== */
+#todo-liste small {
+  color: var(--text-leise);
+}
+
+/* Erledigt: blass und durchgestrichen */
+#todo-liste li.erledigt label {
+  color: var(--text-leise);
+  text-decoration: line-through;
+}
+
+/* Überfällig: rot */
+#todo-liste li.ueberfaellig label,
+#todo-liste li.ueberfaellig small {
+  color: var(--warnung);
+}
+
+
+/* ===== Tagebuch ===== */
 .tagebuch-feld {
   display: block;
   width: 100%;
-  box-sizing: border-box; /* Rand zählt zur Breite, sonst ragt das Feld rechts raus */
+  box-sizing: border-box;        /* Rand zählt zur Breite, sonst ragt das Feld rechts raus */
   margin-bottom: 8px;
-  padding: 10px;
-  font-size: 16px;
 }
 
-/* Tagebuch-Archiv: jeder Tag ein aufklappbarer Kasten */
+/* Archiv: jeder frühere Tag ein aufklappbarer Kasten */
+#tagebuch-archiv {
+  color: var(--text-leise);
+}
+
 #tagebuch-archiv details {
-  border: 1px solid #ddd;
-  border-radius: 8px;
-  padding: 10px 12px;
+  background: var(--karte);
+  color: var(--text);
+  border: 1px solid var(--rand);
+  border-radius: 12px;
+  padding: 12px 14px;
   margin-bottom: 8px;
 }
 
 #tagebuch-archiv summary {
   cursor: pointer;
-  font-size: 16px;
 }
 
 #tagebuch-archiv strong {
@@ -161,9 +237,10 @@ nav button {
   margin: 4px 0;
 }
 
-/* Startseite: drei Kästen untereinander */
+
+/* ===== Startseite ===== */
 #heute-datum {
-  color: #666;
+  color: var(--text-leise);
   margin-top: -8px;
 }
 
@@ -171,18 +248,16 @@ nav button {
   display: block;
   width: 100%;
   text-align: left;
-  font: inherit; /* Knöpfe haben sonst eine eigene, kleinere Schrift */
-  background: #fff8e1; /* hellgelb = noch offen */
-  border: 1px solid #f0d78c;
-  border-radius: 12px;
-  padding: 12px 14px;
+  background: var(--offen);      /* gelblich = noch offen */
+  border: 1px solid var(--offen-rand);
+  border-radius: 14px;
+  padding: 14px 16px;
   margin-bottom: 12px;
-  cursor: pointer;
 }
 
 .heute-kasten.fertig {
-  background: #e8f5e9; /* hellgrün = erledigt */
-  border-color: #a5d6a7;
+  background: var(--fertig);     /* grünlich = erledigt */
+  border-color: var(--fertig-rand);
 }
 
 .heute-kasten strong {
@@ -194,12 +269,9 @@ nav button {
   margin: 6px 0 0;
 }
 
-/* Wer diese Klasse hat, wird nicht angezeigt */
+
+/* ===== Hilfsklasse ===== */
+/* Wer diese Klasse hat, wird nicht angezeigt (für die Tab-Navigation) */
 .versteckt {
   display: none;
-}
-
-/* Der Knopf des gerade offenen Bereichs */
-nav button.aktiv {
-  font-weight: bold;
 }
