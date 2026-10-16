@@ -32,6 +32,13 @@ function heute() {
   return datumAlsText(new Date());
 }
 
+// Rechnet Tage dazu oder ab: verschiebeTag("2026-10-16", -1) → "2026-10-15"
+function verschiebeTag(datum, tage) {
+  const tag = new Date(datum + "T00:00");
+  tag.setDate(tag.getDate() + tage);
+  return datumAlsText(tag);
+}
+
 // Macht aus "2026-10-16" den Text "Freitag, 16. Oktober 2026"
 function langesDatum(datum) {
   const tag = new Date(datum + "T00:00"); // T00:00 = Mitternacht in deiner Zeitzone
@@ -51,6 +58,51 @@ function eintragsListe(eintraege) {
     }
   }
   return liste;
+}
+
+
+// ===== Gewählter Tag (Datumsleiste) =====
+// Habits und Tagebuch zeigen den „gewählten Tag“ – normalerweise heute.
+// Mit ‹ und › kann man zurückblättern, um verpasste Tage nachzutragen.
+let gewaehlterTag = heute();
+
+// Kurzer Name für die Leiste: "Heute", "Gestern" oder z. B. "Mi., 14. Okt."
+function tagesName(datum) {
+  if (datum === heute()) return "Heute";
+  if (datum === verschiebeTag(heute(), -1)) return "Gestern";
+  return new Date(datum + "T00:00").toLocaleDateString("de-DE", {
+    weekday: "short", day: "numeric", month: "short"
+  });
+}
+
+// Setzt den gewählten Tag und baut Habits und Tagebuch dafür neu auf
+function waehleTag(datum) {
+  if (datum > heute()) return; // nicht in die Zukunft
+  gewaehlterTag = datum;
+
+  for (const anzeige of document.querySelectorAll(".tag-anzeige")) {
+    anzeige.textContent = tagesName(datum);
+  }
+  for (const knopf of document.querySelectorAll(".tag-vor")) {
+    knopf.disabled = datum === heute();
+  }
+  for (const hinweis of document.querySelectorAll(".frueherer-tag")) {
+    hinweis.classList.toggle("versteckt", datum === heute());
+  }
+
+  zeigeHabits();
+  zeigeTagebuch();
+}
+
+// Knöpfe in beiden Leisten verbinden
+for (const knopf of document.querySelectorAll(".tag-zurueck")) {
+  knopf.addEventListener("click", function () { waehleTag(verschiebeTag(gewaehlterTag, -1)); });
+}
+for (const knopf of document.querySelectorAll(".tag-vor")) {
+  knopf.addEventListener("click", function () { waehleTag(verschiebeTag(gewaehlterTag, 1)); });
+}
+for (const knopf of document.querySelectorAll(".zu-heute")) {
+  knopf.addEventListener("click", function () { waehleTag(heute()); });
 }
 
 
@@ -101,22 +153,22 @@ function habitTag(datum) {
   return laden("habits-tage", {})[datum] || {};
 }
 
-// Setzt ein Habit für heute auf "x", "/" oder "" (leer)
-function setzeHabit(id, zustand) {
+// Setzt ein Habit an einem Tag auf "x", "/" oder "" (leer)
+function setzeHabit(datum, id, zustand) {
   const alleTage = laden("habits-tage", {});
-  const tag = alleTage[heute()] || {};
+  const tag = alleTage[datum] || {};
   if (zustand === "") {
     delete tag[id];
   } else {
     tag[id] = zustand;
   }
-  alleTage[heute()] = tag;
+  alleTage[datum] = tag;
   speichern("habits-tage", alleTage);
 }
 
-// Baut die Habit-Liste für heute neu auf
+// Baut die Habit-Liste für den gewählten Tag neu auf
 function zeigeHabits() {
-  const tag = habitTag(heute());
+  const tag = habitTag(gewaehlterTag);
   const liste = document.getElementById("habit-liste");
   liste.innerHTML = "";
 
@@ -137,7 +189,7 @@ function zeigeHabits() {
     knopf.addEventListener("click", function () {
       // leer → x → / → leer
       const naechster = { "": "x", "x": "/", "/": "" }[zustand];
-      setzeHabit(habit.id, naechster);
+      setzeHabit(gewaehlterTag, habit.id, naechster);
       zeigeHabits();
     });
 
@@ -218,7 +270,7 @@ function deutscheZahl(zahl) {
 }
 
 function zeigeHappy() {
-  const wert = laden("happy", {})[heute()];
+  const wert = laden("happy", {})[gewaehlterTag];
   const regler = document.getElementById("happy-regler");
   const anzeige = document.getElementById("happy-wert");
   if (wert === undefined) {
@@ -234,7 +286,7 @@ function zeigeHappy() {
 
 document.getElementById("happy-regler").addEventListener("input", function () {
   const alle = laden("happy", {});
-  alle[heute()] = Number(this.value);
+  alle[gewaehlterTag] = Number(this.value);
   speichern("happy", alle);
   zeigeHappy();
 });
@@ -393,10 +445,10 @@ function leererTagebuchTag() {
   return { dankbar: ["", "", ""], fuerMich: ["", "", ""] };
 }
 
-// Schreibt die gespeicherten Einträge von heute in die Felder
+// Schreibt die gespeicherten Einträge des gewählten Tages in die Felder
 function zeigeTagebuch() {
   const tagebuch = laden("tagebuch", {});
-  const tag = tagebuch[heute()] || leererTagebuchTag();
+  const tag = tagebuch[gewaehlterTag] || leererTagebuchTag();
 
   for (const feld of document.querySelectorAll(".tagebuch-feld")) {
     feld.value = tag[feld.dataset.art][feld.dataset.nr];
@@ -407,11 +459,13 @@ function zeigeTagebuch() {
 for (const feld of document.querySelectorAll(".tagebuch-feld")) {
   feld.addEventListener("input", function () {
     const tagebuch = laden("tagebuch", {});
-    const tag = tagebuch[heute()] || leererTagebuchTag();
+    const tag = tagebuch[gewaehlterTag] || leererTagebuchTag();
     tag[feld.dataset.art][feld.dataset.nr] = feld.value;
-    tagebuch[heute()] = tag;
+    tagebuch[gewaehlterTag] = tag;
     speichern("tagebuch", tagebuch);
   });
+  // Nach dem Tippen (Feld verlassen) das Archiv auffrischen – falls ein früherer Tag geändert wurde
+  feld.addEventListener("change", zeigeTagebuchArchiv);
 }
 
 // Zeigt alle früheren Tage, der neueste zuerst. Ein Tipp aufs Datum klappt ihn auf.
@@ -507,7 +561,7 @@ function zeigeAffirmationen() {
 }
 
 document.getElementById("affirmationen-gelesen").addEventListener("click", function () {
-  setzeHabit("affirmationen", "x");
+  setzeHabit(heute(), "affirmationen", "x"); // Affirmationen gelten immer für heute
   zeigeAffirmationen();
   zeigeHabits();
 });
@@ -617,8 +671,7 @@ function zeigeBereich(name) {
 // alles neu aufbauen – sonst stünde noch der gestrige Tag da.
 document.addEventListener("visibilitychange", function () {
   if (document.visibilityState === "visible") {
-    zeigeHabits();
-    zeigeTagebuch();
+    waehleTag(heute()); // zeigt Habits und Tagebuch wieder für heute
     zeigeTagebuchArchiv();
     zeigeAffirmationen();
     zeigeHeute();
@@ -633,7 +686,8 @@ for (const knopf of knoepfe) {
   });
 }
 
-// Beim Start die Tagesansicht zeigen
+// Beim Start: Datumsleisten auf heute stellen und die Tagesansicht zeigen
+waehleTag(heute());
 zeigeBereich("heute");
 
 

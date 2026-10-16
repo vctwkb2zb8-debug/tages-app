@@ -164,6 +164,47 @@ textarea {
 }
 
 
+/* ===== Datumsleiste (Habits und Tagebuch) ===== */
+.tagesleiste {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.tagesleiste button {
+  font-size: 22px;
+  line-height: 1;
+  padding: 8px 16px;
+}
+
+.tagesleiste button:disabled {
+  opacity: 0.3;                  /* „›“ ist blass, wenn man schon bei heute ist */
+  cursor: default;
+}
+
+.tag-anzeige {
+  flex: 1;
+  text-align: center;
+  font-weight: 600;
+}
+
+/* Hinweis, wenn ein früherer Tag offen ist */
+.frueherer-tag {
+  background: var(--offen);
+  border: 1px solid var(--offen-rand);
+  border-radius: 12px;
+  padding: 10px 12px;
+  font-size: 15px;
+}
+
+.frueherer-tag button {
+  margin-left: 4px;
+  padding: 4px 10px;
+  font-size: 14px;
+}
+
+
 /* ===== Habits ===== */
 #habit-liste {
   list-style: none;
