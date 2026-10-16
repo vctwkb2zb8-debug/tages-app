@@ -31,7 +31,19 @@
 
   <section id="tagebuch">
     <h2>Tagebuch</h2>
-    <p>Hier schreibst du, wofür du dankbar bist.</p>
+    <!--
+      Jedes Feld sagt mit data-art, in welche Liste es gehört,
+      und mit data-nr, die wievielte Zeile es ist (0, 1, 2).
+    -->
+    <h3>Wofür ich dankbar bin</h3>
+    <input class="tagebuch-feld" data-art="dankbar" data-nr="0" placeholder="1.">
+    <input class="tagebuch-feld" data-art="dankbar" data-nr="1" placeholder="2.">
+    <input class="tagebuch-feld" data-art="dankbar" data-nr="2" placeholder="3.">
+
+    <h3>Was ich heute für mich getan habe</h3>
+    <input class="tagebuch-feld" data-art="fuerMich" data-nr="0" placeholder="1.">
+    <input class="tagebuch-feld" data-art="fuerMich" data-nr="1" placeholder="2.">
+    <input class="tagebuch-feld" data-art="fuerMich" data-nr="2" placeholder="3.">
   </section>
 
   <section id="todos">

@@ -245,6 +245,39 @@ document.getElementById("todo-neu").addEventListener("submit", function (ereigni
 zeigeTodos();
 
 
+// ===== Dankbarkeitstagebuch =====
+// Gespeichert unter "tagebuch", ein Eintrag pro Tag, z. B.
+//   { "2026-10-16": { dankbar: ["Sonne", "", ""], fuerMich: ["Spaziergang", "", ""] } }
+
+// Ein leerer Tag: je drei leere Zeilen
+function leererTagebuchTag() {
+  return { dankbar: ["", "", ""], fuerMich: ["", "", ""] };
+}
+
+// Schreibt die gespeicherten Einträge von heute in die Felder
+function zeigeTagebuch() {
+  const tagebuch = laden("tagebuch", {});
+  const tag = tagebuch[heute()] || leererTagebuchTag();
+
+  for (const feld of document.querySelectorAll(".tagebuch-feld")) {
+    feld.value = tag[feld.dataset.art][feld.dataset.nr];
+  }
+}
+
+// Speichert ein Feld, sobald darin getippt wird
+for (const feld of document.querySelectorAll(".tagebuch-feld")) {
+  feld.addEventListener("input", function () {
+    const tagebuch = laden("tagebuch", {});
+    const tag = tagebuch[heute()] || leererTagebuchTag();
+    tag[feld.dataset.art][feld.dataset.nr] = feld.value;
+    tagebuch[heute()] = tag;
+    speichern("tagebuch", tagebuch);
+  });
+}
+
+zeigeTagebuch();
+
+
 // ===== Navigation =====
 
 // Zeigt nur den Bereich mit diesem Namen, z. B. zeigeBereich("todos")

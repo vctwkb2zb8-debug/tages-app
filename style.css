@@ -129,6 +129,16 @@ nav button {
   flex: 1;
 }
 
+/* Tagebuch: Felder untereinander, über die ganze Breite */
+.tagebuch-feld {
+  display: block;
+  width: 100%;
+  box-sizing: border-box; /* Rand zählt zur Breite, sonst ragt das Feld rechts raus */
+  margin-bottom: 8px;
+  padding: 10px;
+  font-size: 16px;
+}
+
 /* Wer diese Klasse hat, wird nicht angezeigt */
 .versteckt {
   display: none;
