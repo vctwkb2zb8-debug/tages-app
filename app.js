@@ -455,3 +455,10 @@ for (const knopf of knoepfe) {
 
 // Beim Start die Tagesansicht zeigen
 zeigeBereich("heute");
+
+
+// ===== Offline =====
+// Den „Hausmeister“ (service-worker.js) anmelden, falls der Browser das kann
+if ("serviceWorker" in navigator) {
+  navigator.serviceWorker.register("service-worker.js");
+}
