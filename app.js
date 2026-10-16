@@ -869,6 +869,9 @@ function entpacke(code) {
 
 // Liest den Code aus einem Text. Gibt das JSON-Objekt zurück oder wirft einen Fehler.
 function leseAppCode(text) {
+  // Unsichtbare Zeichen entfernen, die Mail-Apps in lange Wörter einbauen
+  // (weiches Trennzeichen, Null-Breite-Leerzeichen u. Ä.)
+  text = text.replace(/[­​-‍⁠﻿]/g, "").replace(/ /g, " ");
   const start = text.indexOf("TAGESAPP1.");
   if (start === -1) throw new Error("Kein App-Code gefunden");
 
@@ -1000,8 +1003,14 @@ function mailMorgenKasten() {
 }
 
 // Knopf „Aus Mail einfügen“: erst die Zwischenablage versuchen, sonst ein Textfeld zeigen
-function zeigeMailMeldung(text) {
-  document.getElementById("mailcode-meldung").textContent = text;
+function zeigeMailMeldung(text, istFehler) {
+  const meldung = document.getElementById("mailcode-meldung");
+  meldung.textContent = text;
+  meldung.classList.toggle("fehler", Boolean(istFehler));
+  if (text) {
+    document.activeElement.blur(); // Tastatur schließen, damit die Meldung nicht verdeckt ist
+    meldung.scrollIntoView({ block: "center", behavior: "smooth" });
+  }
 }
 
 function verarbeiteMailText(text) {
@@ -1031,7 +1040,16 @@ document.getElementById("mailcode-uebernehmen").addEventListener("click", functi
   try {
     verarbeiteMailText(document.getElementById("mailcode-text").value);
   } catch (fehler) {
-    zeigeMailMeldung("Das ist kein gültiger App-Code. Hast du die ganze Zeile ab „TAGESAPP1.“ kopiert?");
+    const text = document.getElementById("mailcode-text").value;
+    let hinweis;
+    if (text.trim() === "") {
+      hinweis = "Das Feld ist leer. Erst den Code aus der Mail kopieren und hier einfügen.";
+    } else if (!text.includes("TAGESAPP1.")) {
+      hinweis = "Kein App-Code gefunden. Er beginnt mit „TAGESAPP1.“ und steht ganz unten in der Mail unter „📲 APP-CODE“.";
+    } else {
+      hinweis = "Der Code ist unvollständig (" + text.length + " Zeichen eingefügt). Bitte die ganze Zeile ab „TAGESAPP1.“ kopieren.";
+    }
+    zeigeMailMeldung(hinweis, true);
   }
 });
 

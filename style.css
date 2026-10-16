@@ -126,6 +126,15 @@ nav button.aktiv {
   font-size: 14px;
 }
 
+/* Fehlermeldung beim App-Code: gut sichtbar */
+.hinweis.fehler {
+  color: var(--warnung);
+  background: var(--karte);
+  border: 1px solid var(--warnung);
+  border-radius: 10px;
+  padding: 10px 12px;
+}
+
 /* Unauffällige Knöpfe wie „Habits bearbeiten“ oder „Prüfen“ */
 .nebenknopf {
   display: block;
