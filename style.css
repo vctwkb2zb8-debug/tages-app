@@ -103,13 +103,28 @@ nav {
 }
 
 nav button {
-  flex: 1;                       /* alle vier Knöpfe gleich breit */
-  padding: 16px 2px;
-  font-size: 14px;               /* klein genug, dass „Affirmationen“ passt */
+  flex: 1;                       /* alle fünf Knöpfe gleich breit */
+  display: flex;
+  flex-direction: column;        /* Symbol oben, Wort darunter */
+  align-items: center;
+  gap: 3px;
+  padding: 8px 2px 10px;
+  font-size: 12px;
   border: none;
   border-radius: 0;
   background: none;
   color: var(--text-leise);
+}
+
+/* Die Symbole: nur Linien, Farbe = Textfarbe des Knopfs */
+nav svg {
+  width: 24px;
+  height: 24px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.8;
+  stroke-linecap: round;
+  stroke-linejoin: round;
 }
 
 /* Der Knopf des gerade offenen Bereichs */
@@ -325,6 +340,175 @@ textarea {
   border-color: var(--akzent);
   color: var(--karte);
   font-weight: 600;
+}
+
+
+/* ===== Gym ===== */
+/* Farben der drei Einheiten (auch in Kurve und Balken) */
+:root {
+  --leg: #2e7d6b;
+  --push: #c2703d;
+  --pull: #4a6fa5;
+}
+
+/* Auswahl Leg / Push / Pull: drei gleich breite Knöpfe */
+#gym-einheiten {
+  display: flex;
+  gap: 8px;
+  margin: 8px 0 4px;
+}
+
+#gym-einheiten button {
+  flex: 1;
+  padding: 10px;
+  font-weight: 600;
+}
+
+#gym-einheiten button.aktiv {
+  background: var(--akzent);
+  border-color: var(--akzent);
+  color: var(--karte);
+}
+
+/* Eine Übung = eine Karte */
+.gym-uebung {
+  background: var(--karte);
+  border: 1px solid var(--rand);
+  border-radius: 12px;
+  padding: 12px 14px;
+  margin-bottom: 10px;
+}
+
+.gym-uebung strong {
+  display: block;
+  margin-bottom: 6px;
+}
+
+/* Hinweis „Gewicht erhöhen“ */
+.gym-tipp {
+  display: block;
+  font-size: 14px;
+  color: var(--akzent);
+  margin-bottom: 6px;
+}
+
+/* Eine Satz-Zeile: „Satz 1 [kg] [Wdh.] Letztes Mal …“ */
+.gym-satz {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 6px;
+}
+
+.gym-nummer {
+  flex: none;
+  width: 48px;
+  font-size: 14px;
+  color: var(--text-leise);
+}
+
+.gym-satz input {
+  width: 58px;
+  padding: 8px;
+  text-align: center;
+}
+
+.gym-letztes {
+  flex: 1;
+  font-size: 13px;
+  color: var(--text-leise);
+  text-align: right;
+}
+
+.gym-letztes.besser {
+  color: var(--akzent);
+  font-weight: 600;
+}
+
+/* Fortschritt */
+#gym-fortschritt {
+  margin-top: 16px;
+  padding: 12px 14px;
+  background: var(--karte);
+  border: 1px solid var(--rand);
+  border-radius: 14px;
+}
+
+#gym-fortschritt summary {
+  cursor: pointer;
+  font-size: 18px;
+  font-weight: bold;
+}
+
+.gym-kurve {
+  width: 100%;
+  height: auto;
+  display: block;
+  margin: 8px 0 0;
+}
+
+.gym-kurve .nulllinie {
+  stroke: var(--rand);
+  stroke-width: 1;
+  stroke-dasharray: 4 3;
+}
+
+.gym-kurve .verlauf {
+  fill: none;
+  stroke: var(--text-leise);
+  stroke-width: 2;
+  stroke-linejoin: round;
+}
+
+.gym-kurve .achse {
+  fill: var(--text-leise);
+  font-size: 10px;
+}
+
+.gym-kurve .punkt { stroke: var(--karte); stroke-width: 2; }
+.gym-kurve .punkt.leg, .punkt-legende.leg, .fuellung.leg { fill: var(--leg); background: var(--leg); }
+.gym-kurve .punkt.push, .punkt-legende.push, .fuellung.push { fill: var(--push); background: var(--push); }
+.gym-kurve .punkt.pull, .punkt-legende.pull, .fuellung.pull { fill: var(--pull); background: var(--pull); }
+
+/* Kleine farbige Punkte in der Legende */
+.punkt-legende {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  margin: 0 4px 0 8px;
+}
+
+/* Balken pro Übung: Name | Balken | Prozent */
+.gym-balken {
+  display: grid;
+  grid-template-columns: 9.5em 1fr 3.5em;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  margin: 6px 0;
+}
+
+.gym-balken .spur {
+  height: 10px;
+  background: var(--hintergrund);
+  border-radius: 5px;
+  overflow: hidden;
+}
+
+.gym-balken .fuellung {
+  display: block;
+  height: 100%;
+  border-radius: 5px;
+}
+
+.gym-balken .fuellung.minus {
+  background: var(--warnung);
+}
+
+.gym-balken .wert {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
 }
 
 
