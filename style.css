@@ -564,6 +564,18 @@ textarea {
   margin-bottom: 8px;
 }
 
+/* „+“-Knopf unter jeder Liste: ein weiteres Feld */
+.tagebuch-plus {
+  display: block;
+  width: 100%;
+  padding: 8px;
+  font-size: 22px;
+  line-height: 1;
+  color: var(--akzent);
+  background: none;
+  border: 1px dashed var(--akzent);
+}
+
 /* Archiv: jeder frühere Tag ein aufklappbarer Kasten */
 #tagebuch-archiv {
   color: var(--text-leise);

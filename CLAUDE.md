@@ -9,9 +9,9 @@ Eine persönliche Tages-App als **Progressive Web App (PWA)**:
 
 ### Funktionen (Stand 16.10.2026)
 1. **Habits** (früher „Checkliste“) – 15 tägliche Gewohnheiten aus Lars' Gewohnheitstracker, je Tag mit drei Zuständen: ✓ erledigt (`x`), ½ teilweise (`/`), leer. Habits lassen sich hinzufügen, umbenennen und entfernen. Dazu ein tägliches **Happy-Rating** (1–10, halbe Schritte) und ein **Import** für den alten Verlauf aus der Notizen-App (Tabelle einfügen, wird nur lokal gelesen).
-2. **Dankbarkeitstagebuch** – jeden Abend 3× „Wofür ich dankbar bin“ und 3× „Was ich heute für mich getan habe“. Ältere Tage lassen sich ansehen.
+2. **Dankbarkeitstagebuch** – jeden Abend „Wofür ich dankbar bin“ und „Was ich heute für mich getan habe“. Pro Liste startet 1 Feld, ein „+“ darunter fügt weitere hinzu (beliebig viele). Ziel für die Startseite: je 3 Einträge (`TAGEBUCH_ZIEL`). Ältere Tage lassen sich ansehen.
 3. **Affirmationen** – Lars' Sätze zum morgendlichen Durchlesen; „Heute gelesen ✓“ hakt das Habit „Affirmationen“ ab. Der Text liegt **nur auf dem Gerät** (nicht im Code), Format: ein Satz pro Zeile, `#` = Überschrift, `!` = hervorgehoben.
-4. **Tagesansicht** als Startseite – zeigt, was heute noch offen ist, plus (aus den Mail-Routinen übernommen):
+4. **Tagesansicht** als Startseite (Überschrift „Hi Lars, deine Tages-App :)“) – zeigt, was heute noch offen ist. Der Habits-Kasten wird grün, sobald die **Mindestanforderungen** (Frühstück, Mittagessen, Abendessen, Reflektieren, Medikamente, Affirmationen; Liste `MINDEST_HABITS`) mit ✓ abgehakt sind; alle anderen Habits sind eher Wochenübersicht und zählen nur in der Gesamtzahl. Dazu (aus den Mail-Routinen übernommen):
    - **Morgenroutine-Challenge** 16.–29.10.2026 („Tag X/14“: Aufstehen 8:00, Affirmationen, Frühstück, 1 h Lernen)
    - **Sport diese Woche**: Laufen 2×, Kraft 1×, Mobility (= Habit „Dehnen/Haltung“) 2×, gezählt aus den Habits ab Montag, nur volle ✓
    - **Schlafenszeit** ab 17 Uhr: Licht aus = Wecker − 8 h (Wecker einstellbar, Schlüssel `wecker`)

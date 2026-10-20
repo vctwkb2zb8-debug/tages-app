@@ -458,34 +458,92 @@ zeigeHabits();
 
 // ===== Dankbarkeitstagebuch =====
 // Gespeichert unter "tagebuch", ein Eintrag pro Tag, z. B.
-//   { "2026-10-16": { dankbar: ["Sonne", "", ""], fuerMich: ["Spaziergang", "", ""] } }
+//   { "2026-10-16": { dankbar: ["Sonne", "Kaffee"], fuerMich: ["Spaziergang"] } }
+// Die Listen können beliebig lang sein: Mit „+“ kommt ein weiteres Feld dazu.
+// (Ältere Einträge mit je drei Feldern funktionieren unverändert weiter.)
 
-// Ein leerer Tag: je drei leere Zeilen
+// So viele Einträge pro Liste, damit der Kasten auf der Startseite grün wird
+const TAGEBUCH_ZIEL = 3;
+
+// Ein leerer Tag: je ein leeres Feld
 function leererTagebuchTag() {
-  return { dankbar: ["", "", ""], fuerMich: ["", "", ""] };
+  return { dankbar: [""], fuerMich: [""] };
 }
 
-// Schreibt die gespeicherten Einträge des gewählten Tages in die Felder
-function zeigeTagebuch() {
+// Einmalige Aufräumaktion: Alte Einträge hatten immer drei Felder, auch leere.
+// Leere Felder am Ende fallen weg (ein Feld bleibt immer stehen).
+if (!laden("tagebuch-bereinigt", false)) {
   const tagebuch = laden("tagebuch", {});
-  const tag = tagebuch[gewaehlterTag] || leererTagebuchTag();
+  for (const datum in tagebuch) {
+    for (const art of ["dankbar", "fuerMich"]) {
+      const liste = tagebuch[datum][art] || [""];
+      while (liste.length > 1 && liste[liste.length - 1].trim() === "") {
+        liste.pop();
+      }
+      tagebuch[datum][art] = liste;
+    }
+  }
+  speichern("tagebuch", tagebuch);
+  speichern("tagebuch-bereinigt", true);
+}
 
-  for (const feld of document.querySelectorAll(".tagebuch-feld")) {
-    feld.value = tag[feld.dataset.art][feld.dataset.nr];
+// Baut die Felder für den gewählten Tag auf (so viele, wie Einträge gespeichert sind)
+function zeigeTagebuch() {
+  const tag = laden("tagebuch", {})[gewaehlterTag] || leererTagebuchTag();
+
+  for (const art of ["dankbar", "fuerMich"]) {
+    const behaelter = document.getElementById("tagebuch-" + art);
+    behaelter.innerHTML = "";
+    const eintraege = tag[art] && tag[art].length > 0 ? tag[art] : [""];
+
+    eintraege.forEach(function (text, nr) {
+      const feld = document.createElement("input");
+      feld.className = "tagebuch-feld";
+      feld.placeholder = (nr + 1) + ".";
+      feld.value = text;
+      feld.addEventListener("input", function () {
+        speichereTagebuchFeld(art, nr, feld.value);
+      });
+      // Nach dem Tippen (Feld verlassen) das Archiv auffrischen – falls ein früherer Tag geändert wurde
+      feld.addEventListener("change", zeigeTagebuchArchiv);
+      behaelter.append(feld);
+    });
   }
 }
 
-// Speichert ein Feld, sobald darin getippt wird
-for (const feld of document.querySelectorAll(".tagebuch-feld")) {
-  feld.addEventListener("input", function () {
+// Speichert den Text eines Feldes (art = "dankbar" oder "fuerMich", nr = Position in der Liste)
+function speichereTagebuchFeld(art, nr, text) {
+  const tagebuch = laden("tagebuch", {});
+  const tag = tagebuch[gewaehlterTag] || leererTagebuchTag();
+  if (!tag[art] || tag[art].length === 0) tag[art] = [""];
+  tag[art][nr] = text;
+  tagebuch[gewaehlterTag] = tag;
+  speichern("tagebuch", tagebuch);
+}
+
+// „+“-Knopf: ein weiteres Feld unter der Liste. Ist das letzte Feld noch leer,
+// springt der Cursor dorthin, statt ein weiteres leeres Feld anzulegen.
+for (const knopf of document.querySelectorAll(".tagebuch-plus")) {
+  knopf.addEventListener("click", function () {
+    const art = knopf.dataset.art;
+    const felder = document.querySelectorAll("#tagebuch-" + art + " .tagebuch-feld");
+
+    if (felder.length > 0 && felder[felder.length - 1].value.trim() === "") {
+      felder[felder.length - 1].focus();
+      return;
+    }
+
     const tagebuch = laden("tagebuch", {});
     const tag = tagebuch[gewaehlterTag] || leererTagebuchTag();
-    tag[feld.dataset.art][feld.dataset.nr] = feld.value;
+    if (!tag[art]) tag[art] = [""];
+    tag[art].push("");
     tagebuch[gewaehlterTag] = tag;
     speichern("tagebuch", tagebuch);
+
+    zeigeTagebuch();
+    const neueFelder = document.querySelectorAll("#tagebuch-" + art + " .tagebuch-feld");
+    neueFelder[neueFelder.length - 1].focus();
   });
-  // Nach dem Tippen (Feld verlassen) das Archiv auffrischen – falls ein früherer Tag geändert wurde
-  feld.addEventListener("change", zeigeTagebuchArchiv);
 }
 
 // Zeigt alle früheren Tage, der neueste zuerst. Ein Tipp aufs Datum klappt ihn auf.
@@ -494,9 +552,13 @@ function zeigeTagebuchArchiv() {
   const archiv = document.getElementById("tagebuch-archiv");
   archiv.innerHTML = "";
 
-  // Alle Daten außer heute, sortiert vom neuesten zum ältesten
+  // Alle Tage mit mindestens einem Eintrag außer heute, vom neuesten zum ältesten
+  // (Tage, an denen nur leere Felder angelegt wurden, bleiben außen vor)
+  const hatEintrag = function (tag) {
+    return [].concat(tag.dankbar || [], tag.fuerMich || []).some(function (z) { return z.trim() !== ""; });
+  };
   const fruehereTage = Object.keys(tagebuch)
-    .filter(function (datum) { return datum !== heute(); })
+    .filter(function (datum) { return datum !== heute() && hatEintrag(tagebuch[datum]); })
     .sort()
     .reverse();
 
@@ -1413,6 +1475,10 @@ document.getElementById("mailcode-uebernehmen").addEventListener("click", functi
 
 
 // --- Startseite zusammenbauen ---
+
+// Mindestanforderungen am Tag: Ist all das abgehakt, wird der Habits-Kasten grün.
+const MINDEST_HABITS = ["fruehstueck", "mittagessen", "abendessen", "reflektieren", "medikamente", "affirmationen"];
+
 function zeigeHeute() {
   document.getElementById("heute-datum").textContent = langesDatum(heute());
   const kaesten = document.getElementById("heute-kaesten");
@@ -1437,17 +1503,21 @@ function zeigeHeute() {
     gelesen
   ));
 
-  // 2. Habits: wie viele erledigt, welche noch offen?
+  // 2. Habits: grün, sobald die Mindestanforderungen erfüllt sind. Alle anderen Habits
+  //    sind eher eine Wochenübersicht und zählen hier nur in der Gesamtzahl mit.
   const habits = ladeHabits();
-  const offen = habits.filter(function (h) { return tagHabits[h.id] !== "x"; });
+  const mindest = habits.filter(function (h) { return MINDEST_HABITS.includes(h.id); });
+  const mindestOffen = mindest.filter(function (h) { return tagHabits[h.id] !== "x"; });
+  const gesamtErledigt = habits.filter(function (h) { return tagHabits[h.id] === "x"; }).length;
   const happy = laden("happy", {})[heute()];
   kaesten.append(heuteKasten(
     "Habits",
-    (habits.length - offen.length) + " von " + habits.length + " erledigt" +
+    "Mindestens " + (mindest.length - mindestOffen.length) + " von " + mindest.length +
+      " · gesamt " + gesamtErledigt + " von " + habits.length +
       (happy === undefined ? "" : " · Happy: " + deutscheZahl(happy)),
-    offen.map(function (h) { return tagHabits[h.id] === "/" ? h.name + " (½)" : h.name; }),
+    mindestOffen.map(function (h) { return tagHabits[h.id] === "/" ? h.name + " (½)" : h.name; }),
     "habits",
-    offen.length === 0
+    mindestOffen.length === 0
   ));
 
   // 2b. Gym: an Trainingstagen (Mo/Mi/Fr oder selbst gewählt) – gelb bis eingetragen
@@ -1463,16 +1533,19 @@ function zeigeHeute() {
     ));
   }
 
-  // 3. Tagebuch: wie viele der 6 Zeilen sind ausgefüllt?
+  // 3. Tagebuch: je TAGEBUCH_ZIEL Einträge bei „dankbar“ und „für mich“ → grün
   const tag = laden("tagebuch", {})[heute()] || leererTagebuchTag();
-  const alleZeilen = tag.dankbar.concat(tag.fuerMich);
-  const ausgefuellt = alleZeilen.filter(function (z) { return z.trim() !== ""; }).length;
+  const gefuellt = function (liste) {
+    return (liste || []).filter(function (z) { return z.trim() !== ""; }).length;
+  };
+  const anzahlDankbar = gefuellt(tag.dankbar);
+  const anzahlFuerMich = gefuellt(tag.fuerMich);
   kaesten.append(heuteKasten(
     "Tagebuch",
-    ausgefuellt + " von 6 Zeilen ausgefüllt",
+    "Dankbar: " + anzahlDankbar + " · Für mich: " + anzahlFuerMich + " (Ziel: je " + TAGEBUCH_ZIEL + ")",
     [],
     "tagebuch",
-    ausgefuellt === 6
+    anzahlDankbar >= TAGEBUCH_ZIEL && anzahlFuerMich >= TAGEBUCH_ZIEL
   ));
 
   // 4. Sport diese Woche

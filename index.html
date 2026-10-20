@@ -18,7 +18,7 @@
   <meta name="theme-color" content="#2e7d6b">
 </head>
 <body>
-  <h1>Meine Tages-App</h1>
+  <h1>Hi Lars, deine Tages-App :)</h1>
 
   <section id="heute">
     <h2>Heute</h2>
@@ -101,18 +101,16 @@
       Du bearbeitest einen früheren Tag. <button class="zu-heute">Zurück zu heute</button>
     </p>
     <!--
-      Jedes Feld sagt mit data-art, in welche Liste es gehört,
-      und mit data-nr, die wievielte Zeile es ist (0, 1, 2).
+      Pro Liste ein Behälter für die Felder (füllt app.js) und ein „+“-Knopf darunter.
+      data-art sagt, zu welcher Liste der Knopf gehört (dankbar oder fuerMich).
     -->
     <h3>Wofür ich dankbar bin</h3>
-    <input class="tagebuch-feld" data-art="dankbar" data-nr="0" placeholder="1.">
-    <input class="tagebuch-feld" data-art="dankbar" data-nr="1" placeholder="2.">
-    <input class="tagebuch-feld" data-art="dankbar" data-nr="2" placeholder="3.">
+    <div id="tagebuch-dankbar"></div>
+    <button class="tagebuch-plus" data-art="dankbar" title="Weiteres Feld">+</button>
 
     <h3>Was ich für mich getan habe</h3>
-    <input class="tagebuch-feld" data-art="fuerMich" data-nr="0" placeholder="1.">
-    <input class="tagebuch-feld" data-art="fuerMich" data-nr="1" placeholder="2.">
-    <input class="tagebuch-feld" data-art="fuerMich" data-nr="2" placeholder="3.">
+    <div id="tagebuch-fuerMich"></div>
+    <button class="tagebuch-plus" data-art="fuerMich" title="Weiteres Feld">+</button>
 
     <h3>Frühere Tage</h3>
     <!-- Das Archiv füllt app.js hier automatisch hinein -->
