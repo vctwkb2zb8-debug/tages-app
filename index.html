@@ -147,18 +147,43 @@
       Du bearbeitest einen früheren Tag. <button class="zu-heute">Zurück zu heute</button>
     </p>
 
-    <!-- Welche Einheit? Wird nach Wochentag vorgeschlagen (Mo Leg, Mi Push, Fr Pull) -->
+    <!-- Welche Einheit? Der Plan schlägt sie nach Datum vor (Mo/Mi/Fr, A und B im Wechsel).
+         Die Beschriftung der Knöpfe setzt app.js aus dem Plan. -->
     <div id="gym-einheiten">
-      <button data-einheit="leg">Leg</button>
-      <button data-einheit="push">Push</button>
-      <button data-einheit="pull">Pull</button>
+      <button data-einheit="A">Gym A</button>
+      <button data-einheit="B">Gym B</button>
     </div>
     <p id="gym-hinweis" class="hinweis"></p>
+
+    <!-- Infofeld: gilt für alle Übungen -->
+    <div class="gym-info">
+      <strong>2 Sätze à 6–10 Wiederholungen · ca. 90 Sek. Satzpause</strong>
+      <details id="gym-ablauf" class="versteckt">
+        <summary>Ablauf</summary>
+        <p id="gym-ablauf-text"></p>
+      </details>
+    </div>
 
     <!-- Die Übungen füllt app.js automatisch -->
     <div id="gym-uebungen"></div>
 
-    <!-- Fortschritt: eine Gesamtkurve und Balken pro Übung -->
+    <!-- Plan ändern: ✏️ ▲ ▼ ✕ und neue Übungen -->
+    <button id="gym-bearbeiten-knopf" class="nebenknopf">✏️ Plan bearbeiten</button>
+
+    <!-- Plan und bisherige Trainings per Code übernehmen (nur im Bearbeiten-Modus sichtbar) -->
+    <details id="gym-import" class="versteckt">
+      <summary>Plan und Training importieren</summary>
+      <p class="hinweis">
+        Füge hier den Plan-Code ein (beginnt mit GYMPLAN1.). Er ersetzt deinen Plan,
+        schon gemachte Sätze bleiben erhalten. Alles bleibt auf diesem Gerät.
+      </p>
+      <textarea id="gym-import-text" rows="4" placeholder="GYMPLAN1.…"></textarea>
+      <button id="gym-import-pruefen" class="nebenknopf">Prüfen</button>
+      <p id="gym-import-meldung" class="hinweis"></p>
+      <button id="gym-import-uebernehmen" class="versteckt">Übernehmen</button>
+    </details>
+
+    <!-- Fortschritt: Plan-Ring, Gesamtkurve und eine kleine Linie pro Übung -->
     <details id="gym-fortschritt" open>
       <summary>📈 Fortschritt</summary>
       <div id="gym-fortschritt-inhalt"></div>

@@ -462,8 +462,9 @@ zeigeHabits();
 // Die Listen können beliebig lang sein: Mit „+“ kommt ein weiteres Feld dazu.
 // (Ältere Einträge mit je drei Feldern funktionieren unverändert weiter.)
 
-// So viele Einträge pro Liste, damit der Kasten auf der Startseite grün wird
-const TAGEBUCH_ZIEL = 3;
+// Mindestens so viele Einträge bei „Was ich für mich getan habe“, damit der Kasten
+// auf der Startseite grün wird. Die Dankbarkeits-Einträge sind ein Zusatz.
+const TAGEBUCH_MIN_GELEISTET = 2;
 
 // Ein leerer Tag: je ein leeres Feld
 function leererTagebuchTag() {
@@ -658,56 +659,111 @@ zeigeAffirmationen();
 
 
 // ===== Gym =====
-// Gespeichert unter "gym", ein Eintrag pro Trainingstag, z. B.
-//   { "2026-10-26": { einheit: "leg", saetze: { beinpresse: [{ kg: 70, wdh: 8 }, { kg: 70, wdh: 7 }] } } }
-// Der Trainingsplan steht hier fest im Code (die Übungsnamen sind nicht privat).
+// Zwei Einheiten im Wechsel, jeweils Mo/Mi/Fr: Gym A (Push + Beine) und Gym B (Pull + Beine).
+//
+// Der PLAN liegt auf dem Handy unter "gym-plan" und lässt sich in der App ändern (✏️).
+// Im Code steht nur eine Standard-Vorlage mit Übungsnamen, keine Gewichte, denn der Code
+// ist öffentlich. Gewichte kommen über den Import oder die Eingabe in der App.
+//   gym-plan = { A: { name, untertitel, uebungen: [{ id, name, einheit, typ, start, notiz }] },
+//                B: { … }, ablauf: "Text" }
+//
+// Das TRAINING liegt unter "gym", ein Eintrag pro Tag:
+//   { "2026-10-26": { einheit: "A", saetze: { beinpresse: [{ kg: 69, wdh: 10 }, { kg: 69, wdh: 10 }] } } }
+// Ein Satz zählt als gemacht, sobald er gespeichert ist (✓ getippt oder ein Wert geändert).
 
-const GYM_PLAN = {
-  leg: { name: "Leg", wochentag: 0, uebungen: [
-    { id: "beinstrecker", name: "Beinstrecker" },
-    { id: "beinbeuger", name: "Beinbeuger" },
-    { id: "beinpresse", name: "Beinpresse" },
-    { id: "hip-thrust", name: "Hip Thrust" },
-    { id: "wadenheben", name: "Wadenheben" }
-  ] },
-  push: { name: "Push", wochentag: 2, uebungen: [
-    { id: "brustpresse-positiv", name: "Brustpresse positiv" },
-    { id: "brustpresse", name: "Normale Brustpresse" },
-    { id: "butterfly", name: "Butterfly" },
-    { id: "schulterdruecken", name: "Schulterdrücken" },
-    { id: "seitheben", name: "Seitheben" },
-    { id: "trizepsdruecken", name: "Trizepsdrücken" },
-    { id: "trizeps-ueber-kopf", name: "Trizepsdrücken über Kopf" }
-  ] },
-  pull: { name: "Pull", wochentag: 4, uebungen: [
-    { id: "klimmzuege", name: "Klimmzüge", nurWdh: true }, // mit Körpergewicht: nur Wiederholungen
-    { id: "rudern", name: "Brustgestütztes Rudern" },
-    { id: "rueckenstrecker", name: "Rückenstrecker" },
-    { id: "butterfly-reverse", name: "Butterfly Reverse" },
-    { id: "bizeps-curls", name: "Bizeps Curls" },
-    { id: "hammer-curls", name: "Hammer Curls" },
-    { id: "drag-curls", name: "Drag Curls" }
-  ] }
-};
-const GYM_SAETZE = 2;      // Vorgabe: 2 Sätze …
-const GYM_WDH_ZIEL = 10;   // … à 6–10 Wiederholungen; bei 2× 10 ist es Zeit für mehr Gewicht
+const GYM_START = "2026-10-26";      // Montag der Woche 1
+const GYM_BLOCK_WOCHEN = 4;          // zunächst 4 Wochen, danach Plan überprüfen
+const GYM_PRO_BLOCK = GYM_BLOCK_WOCHEN * 3;
+const GYM_SAETZE = 2;
+const GYM_WDH_MIN = 6;               // darunter: Gewicht reduzieren
+const GYM_WDH_ZIEL = 10;             // 2× so viele: Gewicht erhöhen
+const GYM_EINHEITEN = ["A", "B"];
+const GYM_KG_ARTEN = ["kg", "kg je Hand", "kg Scheiben gesamt", "nur Wdh."];
+const GYM_TYPEN = { grund: "Grundübung", iso: "Isolation" };
+const GYM_PAUSE = { grund: "Pause 90–120 s", iso: "Pause 60–75 s" };
 
-// Welche Einheit gehört zu einem Datum? Gespeichert, sonst nach Wochentag, sonst keine.
-function gymEinheit(datum) {
-  const eintrag = laden("gym", {})[datum];
-  if (eintrag && eintrag.einheit) return eintrag.einheit;
-  for (const id in GYM_PLAN) {
-    if (GYM_PLAN[id].wochentag === wochentag(datum)) return id;
-  }
-  return null;
+function gymUebung(id, name, typ, kgArt) {
+  return { id: id, name: name, typ: typ, einheit: kgArt || "kg", start: null, notiz: "" };
 }
 
-// Wurde an diesem Tag schon mindestens ein Satz eingetragen?
+const GYM_STANDARD_PLAN = {
+  A: { name: "Gym A", untertitel: "Push + Beine", uebungen: [
+    gymUebung("beinpresse", "Beinpresse", "grund"),
+    gymUebung("hip-thrust", "Hip Thrust", "grund", "kg Scheiben gesamt"),
+    gymUebung("beinstrecker", "Beinstrecker", "iso"),
+    gymUebung("brustpresse", "Brustpresse", "grund"),
+    gymUebung("schulterpresse", "Schulterpresse (Kurzhanteln)", "grund", "kg je Hand"),
+    gymUebung("seitheben", "Seitheben", "iso", "kg je Hand"),
+    gymUebung("trizeps-kabel", "Trizepsdrücken (Kabel)", "iso"),
+    gymUebung("pec-fly", "Pec Fly", "iso")
+  ] },
+  B: { name: "Gym B", untertitel: "Pull + Beine", uebungen: [
+    gymUebung("beinbeuger", "Beinbeuger (Prone Leg Curl)", "iso"),
+    gymUebung("huefte-abduktion", "Hüftabduktion", "iso"),
+    gymUebung("huefte-adduktion", "Hüftadduktion", "iso"),
+    gymUebung("wadenheben", "Wadenheben", "iso"),
+    gymUebung("latzug", "Latzug", "grund"),
+    gymUebung("seated-row", "Seated Row", "grund"),
+    gymUebung("rear-delt", "Rear Delt", "iso"),
+    gymUebung("incline-curls", "Incline Curls", "iso", "kg je Hand"),
+    gymUebung("hammer-curls", "Hammer Curls", "iso", "kg je Hand")
+  ] },
+  ablauf: ""
+};
+
+let gymBearbeiten = false;   // Plan-bearbeiten-Modus an?
+let gymEditId = null;        // welche Übung gerade im Formular ist ("neu" = neue Übung)
+
+// Der Plan: der gespeicherte, sonst eine Kopie der Standard-Vorlage
+function ladeGymPlan() {
+  return laden("gym-plan", null) || JSON.parse(JSON.stringify(GYM_STANDARD_PLAN));
+}
+
+function speichereGymPlan(plan) {
+  speichern("gym-plan", plan);
+}
+
+function gymNurWdh(uebung) {
+  return uebung.einheit === "nur Wdh.";
+}
+
+// Ganze Tage zwischen zwei Daten ("2026-10-26", "2026-10-29" → 3)
+function tageZwischen(von, bis) {
+  return Math.round((new Date(bis + "T00:00") - new Date(von + "T00:00")) / 86400000);
+}
+
+// "2026-10-26" → "26.10."
+function punktDatum(datum) {
+  return datum.slice(8, 10) + "." + datum.slice(5, 7) + ".";
+}
+
+// Welche Einheit schlägt der Plan für ein Datum vor? Mo/Mi/Fr ab Start, im Wochenwechsel:
+// ungerade Wochen Mo A · Mi B · Fr A, gerade Wochen Mo B · Mi A · Fr B.
+function gymVorschlag(datum) {
+  if (datum < GYM_START) return null;
+  const platz = [0, 2, 4].indexOf(wochentag(datum)); // Mo = 0, Mi = 2, Fr = 4
+  if (platz === -1) return null;
+  const woche = Math.floor(tageZwischen(GYM_START, datum) / 7) + 1;
+  return (woche % 2 === 1 ? ["A", "B", "A"] : ["B", "A", "B"])[platz];
+}
+
+// Die Einheit eines Tages: selbst gewählt, sonst der Vorschlag des Plans (oder keine)
+function gymEinheit(datum) {
+  const eintrag = laden("gym", {})[datum];
+  if (eintrag && GYM_EINHEITEN.includes(eintrag.einheit)) return eintrag.einheit;
+  return gymVorschlag(datum);
+}
+
+function gymSatzGemacht(satz) {
+  return Boolean(satz && satz.wdh > 0);
+}
+
+// Wurde an diesem Tag mindestens ein Satz gemacht?
 function gymTrainiert(datum) {
   const eintrag = laden("gym", {})[datum];
   if (!eintrag) return false;
   return Object.values(eintrag.saetze || {}).some(function (saetze) {
-    return saetze.some(function (s) { return s && s.wdh > 0; });
+    return saetze.some(gymSatzGemacht);
   });
 }
 
@@ -725,13 +781,13 @@ function besterWert(saetze, nurWdh) {
   return Math.max(0, ...(saetze || []).map(function (s) { return kraftwert(s, nurWdh); }));
 }
 
-// Das letzte Training VOR einem Datum, in dem diese Übung vorkam: { datum, saetze } oder null
+// Das letzte Training VOR einem Datum, in dem diese Übung gemacht wurde: { datum, saetze } oder null
 function letztesTraining(uebungId, vorDatum) {
   const gym = laden("gym", {});
   const daten = Object.keys(gym).filter(function (d) { return d < vorDatum; }).sort().reverse();
   for (const d of daten) {
     const saetze = (gym[d].saetze || {})[uebungId];
-    if (saetze && saetze.some(function (s) { return s && s.wdh > 0; })) {
+    if (saetze && saetze.some(gymSatzGemacht)) {
       return { datum: d, saetze: saetze };
     }
   }
@@ -745,48 +801,104 @@ function leseZahl(text) {
 }
 
 function satzText(satz, nurWdh) {
-  if (!satz || !(satz.wdh > 0)) return "–";
+  if (!gymSatzGemacht(satz)) return "–";
   return nurWdh ? satz.wdh + " Wdh." : deutscheZahl(satz.kg) + " kg × " + satz.wdh;
 }
 
-// Speichert einen Wert (kg oder wdh) eines Satzes für den gewählten Tag
-function speichereSatz(uebungId, nr, feld, wert) {
+// Merkt sich einen gemachten Satz für den gewählten Tag
+function speichereSatz(uebungId, nr, kg, wdh) {
   const gym = laden("gym", {});
   const tag = gym[gewaehlterTag] || { einheit: gymEinheit(gewaehlterTag), saetze: {} };
+  tag.saetze = tag.saetze || {};
   tag.saetze[uebungId] = tag.saetze[uebungId] || [];
-  tag.saetze[uebungId][nr] = tag.saetze[uebungId][nr] || { kg: null, wdh: null };
-  tag.saetze[uebungId][nr][feld] = wert;
+  tag.saetze[uebungId][nr] = { kg: kg, wdh: wdh };
   gym[gewaehlterTag] = tag;
   speichern("gym", gym);
 
-  // Training eingetragen → Habit „Krafttraining“ abhaken (nur wenn dort noch nichts steht)
-  if (gymTrainiert(gewaehlterTag) && !habitTag(gewaehlterTag)["krafttraining"]) {
+  // Training gemacht → Habit „Krafttraining“ abhaken (nur wenn dort noch nichts steht)
+  if (!habitTag(gewaehlterTag)["krafttraining"]) {
     setzeHabit(gewaehlterTag, "krafttraining", "x");
   }
 }
 
-// Baut den Gym-Bereich für den gewählten Tag auf
+// Nimmt einen Satz wieder zurück (✓ nochmal getippt)
+function loescheSatz(uebungId, nr) {
+  const gym = laden("gym", {});
+  const tag = gym[gewaehlterTag];
+  if (!tag || !tag.saetze || !tag.saetze[uebungId]) return;
+  tag.saetze[uebungId][nr] = null;
+  if (!tag.saetze[uebungId].some(gymSatzGemacht)) {
+    delete tag.saetze[uebungId];
+  }
+  speichern("gym", gym);
+}
+
+// Was steht in einem noch nicht gemachten Satz-Feld? Die Werte vom letzten Training,
+// sonst das Startgewicht aus dem Plan (ohne Wiederholungen).
+function gymVorschlagWerte(uebung, vorher, nr) {
+  if (vorher) {
+    const gemachte = vorher.saetze.filter(gymSatzGemacht);
+    const satz = gymSatzGemacht(vorher.saetze[nr]) ? vorher.saetze[nr] : gemachte[gemachte.length - 1];
+    return { kg: satz.kg, wdh: satz.wdh };
+  }
+  return { kg: typeof uebung.start === "number" ? uebung.start : null, wdh: null };
+}
+
+// Hinweis fürs nächste Mal: "erhoehen", "reduzieren" oder null
+function gymHinweisArt(vorher) {
+  if (!vorher) return null;
+  const saetze = vorher.saetze;
+  if (gymSatzGemacht(saetze[0]) && saetze[0].wdh < GYM_WDH_MIN) return "reduzieren";
+  const ersteSaetze = saetze.slice(0, GYM_SAETZE);
+  const geschafft = ersteSaetze.length >= GYM_SAETZE && ersteSaetze.every(function (s) {
+    return gymSatzGemacht(s) && s.wdh >= GYM_WDH_ZIEL;
+  });
+  return geschafft ? "erhoehen" : null;
+}
+
+
+// --- Anzeige: Training des gewählten Tages ---
+
 function zeigeGym() {
+  const plan = ladeGymPlan();
   const einheit = gymEinheit(gewaehlterTag);
   const tag = laden("gym", {})[gewaehlterTag] || { saetze: {} };
 
+  // Knöpfe „Gym A“ / „Gym B“
   for (const knopf of document.querySelectorAll("#gym-einheiten button")) {
+    knopf.textContent = plan[knopf.dataset.einheit].name;
     knopf.classList.toggle("aktiv", knopf.dataset.einheit === einheit);
   }
+
+  // Ablauf (nur wenn im Plan hinterlegt) und Bearbeiten-Knöpfe
+  document.getElementById("gym-ablauf").classList.toggle("versteckt", !plan.ablauf);
+  document.getElementById("gym-ablauf-text").textContent = plan.ablauf || "";
+  document.getElementById("gym-bearbeiten-knopf").textContent = gymBearbeiten ? "Fertig" : "✏️ Plan bearbeiten";
+  document.getElementById("gym-import").classList.toggle("versteckt", !gymBearbeiten);
 
   const liste = document.getElementById("gym-uebungen");
   liste.innerHTML = "";
   const hinweis = document.getElementById("gym-hinweis");
 
-  if (!einheit) {
-    hinweis.textContent = "Heute ist kein Trainingstag laut Plan (Mo Leg · Mi Push · Fr Pull). Wähle oben eine Einheit, wenn du trotzdem trainierst.";
-    zeigeGymFortschritt();
-    return;
+  const angezeigt = einheit || (gymBearbeiten ? "A" : null);
+  if (!angezeigt) {
+    hinweis.textContent = "Kein Trainingstag laut Plan (Mo/Mi/Fr ab " + punktDatum(GYM_START) +
+      "). Wähle oben Gym A oder B, wenn du trotzdem trainierst.";
+  } else {
+    hinweis.textContent = plan[angezeigt].untertitel || "";
+    if (gymBearbeiten) {
+      zeigeGymBearbeiten(plan, angezeigt);
+    } else {
+      zeigeGymUebungen(plan, angezeigt, tag);
+    }
   }
-  hinweis.textContent = "Vorgabe: " + GYM_SAETZE + " Sätze à 6–" + GYM_WDH_ZIEL + " Wiederholungen";
+  zeigeGymFortschritt();
+}
 
-  for (const uebung of GYM_PLAN[einheit].uebungen) {
-    const saetze = tag.saetze[uebung.id] || [];
+function zeigeGymUebungen(plan, einheit, tag) {
+  const liste = document.getElementById("gym-uebungen");
+
+  for (const uebung of plan[einheit].uebungen) {
     const vorher = letztesTraining(uebung.id, gewaehlterTag);
 
     const karte = document.createElement("div");
@@ -795,61 +907,134 @@ function zeigeGym() {
     titel.textContent = uebung.name;
     karte.append(titel);
 
-    // Beim letzten Mal beide Sätze mit 10+ Wiederholungen? → Zeit für mehr Gewicht
-    if (!uebung.nurWdh && vorher && vorher.saetze.length >= GYM_SAETZE &&
-        vorher.saetze.slice(0, GYM_SAETZE).every(function (s) { return s && s.wdh >= GYM_WDH_ZIEL; })) {
+    // Kleine graue Zeile: Gewichtsart, Pausenempfehlung, Notiz
+    const meta = [];
+    if (uebung.einheit !== "kg") meta.push(uebung.einheit.replace(/^kg /, ""));
+    if (GYM_PAUSE[uebung.typ]) meta.push(GYM_PAUSE[uebung.typ]);
+    if (uebung.notiz) meta.push(uebung.notiz);
+    if (meta.length > 0) {
+      const metaZeile = document.createElement("span");
+      metaZeile.className = "gym-meta";
+      metaZeile.textContent = meta.join(" · ");
+      karte.append(metaZeile);
+    }
+
+    // Hinweis nach dem letzten Training
+    const art = gymNurWdh(uebung) ? null : gymHinweisArt(vorher);
+    if (art) {
       const tipp = document.createElement("span");
       tipp.className = "gym-tipp";
-      tipp.textContent = "Letztes Mal 2× " + GYM_WDH_ZIEL + " geschafft → Gewicht erhöhen";
+      tipp.textContent = art === "erhoehen"
+        ? "Letztes Mal 2× " + GYM_WDH_ZIEL + " geschafft → Gewicht erhöhen"
+        : "Letztes Mal Satz 1 unter " + GYM_WDH_MIN + " Wdh. → Gewicht reduzieren";
       karte.append(tipp);
     }
 
     for (let nr = 0; nr < GYM_SAETZE; nr++) {
-      const satz = saetze[nr] || {};
-      const zeile = document.createElement("div");
-      zeile.className = "gym-satz";
-
-      const nummer = document.createElement("span");
-      nummer.className = "gym-nummer";
-      nummer.textContent = "Satz " + (nr + 1);
-      zeile.append(nummer);
-
-      // Vergleich mit dem letzten Mal (wird beim Tippen aufgefrischt, ohne die Liste neu zu bauen –
-      // sonst würde das Handy beim Wechsel ins nächste Feld den Cursor verlieren)
-      const letztes = document.createElement("span");
-      letztes.className = "gym-letztes";
-      const alt = vorher ? vorher.saetze[nr] : null;
-      const vergleiche = function () {
-        letztes.textContent = alt ? "Letztes Mal: " + satzText(alt, uebung.nurWdh) : "";
-        const besser = alt && kraftwert(satz, uebung.nurWdh) > kraftwert(alt, uebung.nurWdh);
-        if (besser) letztes.textContent += " ↑";
-        letztes.classList.toggle("besser", Boolean(besser));
-      };
-      vergleiche();
-
-      // Eingabefeld bauen; type="text" + inputmode, damit das Komma auf dem iPhone klappt
-      const feldBauen = function (feld, platzhalter, modus) {
-        const eingabe = document.createElement("input");
-        eingabe.type = "text";
-        eingabe.inputMode = modus;
-        eingabe.placeholder = platzhalter;
-        eingabe.value = satz[feld] == null ? "" : deutscheZahl(satz[feld]);
-        eingabe.addEventListener("input", function () {
-          satz[feld] = leseZahl(eingabe.value);
-          speichereSatz(uebung.id, nr, feld, satz[feld]);
-          vergleiche();
-          zeigeGymFortschritt();
-        });
-        return eingabe;
-      };
-      if (!uebung.nurWdh) zeile.append(feldBauen("kg", "kg", "decimal"));
-      zeile.append(feldBauen("wdh", "Wdh.", "numeric"), letztes);
-      karte.append(zeile);
+      karte.append(gymSatzZeile(uebung, nr, tag, vorher));
     }
     liste.append(karte);
   }
+}
 
-  zeigeGymFortschritt();
+// Eine Satz-Zeile: Nummer, kg, Wdh., ✓ und „Letztes Mal“.
+// Die Felder sind vorausgefüllt; der Satz zählt erst, wenn du ✓ tippst oder einen Wert änderst.
+function gymSatzZeile(uebung, nr, tag, vorher) {
+  const nurWdh = gymNurWdh(uebung);
+  const gespeichert = ((tag.saetze || {})[uebung.id] || [])[nr];
+  let gemacht = gymSatzGemacht(gespeichert);
+  const werte = gemacht ? gespeichert : gymVorschlagWerte(uebung, vorher, nr);
+  const alt = vorher ? vorher.saetze[nr] : null;
+
+  const zeile = document.createElement("div");
+  zeile.className = "gym-satz";
+  const nummer = document.createElement("span");
+  nummer.className = "gym-nummer";
+  nummer.textContent = nr + 1;
+
+  const feldBauen = function (platzhalter, modus, wert) {
+    const eingabe = document.createElement("input");
+    eingabe.type = "text"; // text + inputmode, damit das Komma auf dem iPhone klappt
+    eingabe.inputMode = modus;
+    eingabe.placeholder = platzhalter;
+    eingabe.value = wert == null ? "" : deutscheZahl(wert);
+    eingabe.addEventListener("input", beiAenderung);
+    // Beim Antippen alles markieren, dann überschreibt die erste Ziffer den alten Wert
+    eingabe.addEventListener("focus", function () { setTimeout(function () { eingabe.select(); }, 0); });
+    return eingabe;
+  };
+  const kgFeld = nurWdh ? null : feldBauen("kg", "decimal", werte.kg);
+  const wdhFeld = feldBauen("Wdh.", "numeric", werte.wdh);
+
+  const haken = document.createElement("button");
+  haken.type = "button";
+  haken.className = "gym-haken";
+  haken.textContent = "✓";
+  haken.title = "Satz gemacht";
+  haken.addEventListener("click", beiHaken);
+
+  const letztes = document.createElement("span");
+  letztes.className = "gym-letztes";
+
+  zeile.append(nummer);
+  if (kgFeld) zeile.append(kgFeld);
+  zeile.append(wdhFeld, haken, letztes);
+
+  // Aktuelle Werte aus den Feldern lesen
+  function lies() {
+    return { kg: kgFeld ? leseZahl(kgFeld.value) : null, wdh: leseZahl(wdhFeld.value) };
+  }
+
+  function istVollstaendig(w) {
+    return w.wdh > 0 && (nurWdh || w.kg > 0);
+  }
+
+  // Aussehen an den Stand anpassen (gemacht = grün, sonst blasser Vorschlag)
+  function aktualisiere() {
+    zeile.classList.toggle("gemacht", gemacht);
+    haken.setAttribute("aria-pressed", gemacht ? "true" : "false");
+    for (const feld of [kgFeld, wdhFeld]) {
+      if (feld) feld.classList.toggle("vorschlag", !gemacht);
+    }
+    let text = gymSatzGemacht(alt) ? "Zuletzt: " + satzText(alt, nurWdh) : "";
+    const besser = gemacht && gymSatzGemacht(alt) && kraftwert(lies(), nurWdh) > kraftwert(alt, nurWdh);
+    if (besser) text += " ↑";
+    letztes.textContent = text;
+    letztes.classList.toggle("besser", Boolean(besser));
+    zeigeGymFortschritt();
+  }
+
+  // Wert getippt: vollständig → Satz gilt als gemacht; sonst (war gemacht) wieder zurücknehmen
+  function beiAenderung() {
+    const w = lies();
+    if (istVollstaendig(w)) {
+      speichereSatz(uebung.id, nr, w.kg, w.wdh);
+      gemacht = true;
+    } else if (gemacht) {
+      loescheSatz(uebung.id, nr);
+      gemacht = false;
+    }
+    aktualisiere();
+  }
+
+  // ✓: Satz bestätigen oder wieder zurücknehmen
+  function beiHaken() {
+    if (gemacht) {
+      loescheSatz(uebung.id, nr);
+      gemacht = false;
+      aktualisiere();
+      return;
+    }
+    const w = lies();
+    if (!(w.wdh > 0)) { wdhFeld.focus(); return; }
+    if (!nurWdh && !(w.kg > 0)) { kgFeld.focus(); return; }
+    speichereSatz(uebung.id, nr, w.kg, w.wdh);
+    gemacht = true;
+    aktualisiere();
+  }
+
+  aktualisiere();
+  return zeile;
 }
 
 // Einheit-Knöpfe: Auswahl für den gewählten Tag speichern
@@ -865,35 +1050,302 @@ for (const knopf of document.querySelectorAll("#gym-einheiten button")) {
 }
 
 
-// --- Fortschritt ---
+// --- Plan bearbeiten (✏️ ▲ ▼ ✕ +) ---
+
+function zeigeGymBearbeiten(plan, einheit) {
+  const liste = document.getElementById("gym-uebungen");
+  const uebungen = plan[einheit].uebungen;
+
+  uebungen.forEach(function (uebung, i) {
+    if (gymEditId === uebung.id) {
+      liste.append(gymEditForm(einheit, uebung));
+      return;
+    }
+
+    const zeile = document.createElement("div");
+    zeile.className = "gym-edit-zeile";
+
+    const knopf = function (text, titel, aktion, gesperrt) {
+      const k = document.createElement("button");
+      k.type = "button";
+      k.textContent = text;
+      k.title = titel;
+      k.disabled = Boolean(gesperrt);
+      k.addEventListener("click", aktion);
+      return k;
+    };
+    const name = document.createElement("span");
+    name.className = "gym-edit-name";
+    name.textContent = uebung.name;
+
+    zeile.append(
+      knopf("▲", "Nach oben", function () { verschiebeGymUebung(einheit, uebung.id, -1); }, i === 0),
+      knopf("▼", "Nach unten", function () { verschiebeGymUebung(einheit, uebung.id, 1); }, i === uebungen.length - 1),
+      name,
+      knopf("✏️", "Ändern", function () { gymEditId = uebung.id; zeigeGym(); }),
+      knopf("✕", "Entfernen", function () { entferneGymUebung(einheit, uebung.id); })
+    );
+    liste.append(zeile);
+  });
+
+  if (gymEditId === "neu") {
+    liste.append(gymEditForm(einheit, null));
+  } else {
+    const neuKnopf = document.createElement("button");
+    neuKnopf.type = "button";
+    neuKnopf.className = "nebenknopf";
+    neuKnopf.textContent = "+ Übung hinzufügen";
+    neuKnopf.addEventListener("click", function () { gymEditId = "neu"; zeigeGym(); });
+    liste.append(neuKnopf);
+  }
+}
+
+function verschiebeGymUebung(einheit, id, richtung) {
+  const plan = ladeGymPlan();
+  const liste = plan[einheit].uebungen;
+  const i = liste.findIndex(function (u) { return u.id === id; });
+  const j = i + richtung;
+  if (i === -1 || j < 0 || j >= liste.length) return;
+  const gemerkt = liste[i];
+  liste[i] = liste[j];
+  liste[j] = gemerkt;
+  speichereGymPlan(plan);
+  zeigeGym();
+}
+
+function entferneGymUebung(einheit, id) {
+  const plan = ladeGymPlan();
+  const uebung = plan[einheit].uebungen.find(function (u) { return u.id === id; });
+  if (!confirm("„" + uebung.name + "“ aus dem Plan entfernen? Bisherige Einträge bleiben gespeichert.")) return;
+  plan[einheit].uebungen = plan[einheit].uebungen.filter(function (u) { return u.id !== id; });
+  speichereGymPlan(plan);
+  zeigeGym();
+}
+
+// Formular für eine Übung. uebung = null → neue Übung anlegen
+function gymEditForm(einheit, uebung) {
+  const w = uebung || { name: "", einheit: "kg", typ: "iso", start: null, notiz: "" };
+  const form = document.createElement("form");
+  form.className = "gym-edit-form";
+
+  const mitBeschriftung = function (text, element) {
+    const label = document.createElement("label");
+    const beschriftung = document.createElement("span");
+    beschriftung.textContent = text;
+    label.append(beschriftung, element);
+    return label;
+  };
+  const eingabe = function (wert, platzhalter, modus) {
+    const feld = document.createElement("input");
+    feld.type = "text";
+    if (modus) feld.inputMode = modus;
+    feld.placeholder = platzhalter;
+    feld.value = wert;
+    return feld;
+  };
+  const auswahl = function (optionen, gewaehlt) {
+    const feld = document.createElement("select");
+    for (const wert in optionen) {
+      const option = document.createElement("option");
+      option.value = wert;
+      option.textContent = optionen[wert];
+      feld.append(option);
+    }
+    feld.value = gewaehlt;
+    return feld;
+  };
+  const arten = {};
+  for (const art of GYM_KG_ARTEN) arten[art] = art;
+
+  const nameFeld = eingabe(w.name, "Name der Übung");
+  nameFeld.required = true;
+  const startFeld = eingabe(w.start == null ? "" : deutscheZahl(w.start), "z. B. 40", "decimal");
+  const artFeld = auswahl(arten, w.einheit);
+  const typFeld = auswahl(GYM_TYPEN, w.typ);
+  const notizFeld = eingabe(w.notiz, "z. B. Sitz 2 · Gerät in 8-kg-Schritten");
+
+  const knoepfe = document.createElement("div");
+  knoepfe.className = "gym-edit-knoepfe";
+  const speichernKnopf = document.createElement("button");
+  speichernKnopf.type = "submit";
+  speichernKnopf.textContent = "Speichern";
+  const abbrechenKnopf = document.createElement("button");
+  abbrechenKnopf.type = "button";
+  abbrechenKnopf.textContent = "Abbrechen";
+  abbrechenKnopf.addEventListener("click", function () { gymEditId = null; zeigeGym(); });
+  knoepfe.append(speichernKnopf, abbrechenKnopf);
+
+  form.append(
+    mitBeschriftung("Name", nameFeld),
+    mitBeschriftung("Startgewicht (gilt bis zum ersten Training)", startFeld),
+    mitBeschriftung("Gewichtsart", artFeld),
+    mitBeschriftung("Typ (bestimmt die Pausenempfehlung)", typFeld),
+    mitBeschriftung("Notiz", notizFeld),
+    knoepfe
+  );
+
+  form.addEventListener("submit", function (ereignis) {
+    ereignis.preventDefault();
+    const name = nameFeld.value.trim();
+    if (name === "") return;
+    const daten = {
+      name: name,
+      einheit: artFeld.value,
+      typ: typFeld.value,
+      start: leseZahl(startFeld.value),
+      notiz: notizFeld.value.trim()
+    };
+    const plan = ladeGymPlan();
+    if (uebung) {
+      Object.assign(plan[einheit].uebungen.find(function (u) { return u.id === uebung.id; }), daten);
+    } else {
+      plan[einheit].uebungen.push(Object.assign({ id: "u" + Date.now() }, daten)); // Date.now() = eindeutige Zahl
+    }
+    speichereGymPlan(plan);
+    gymEditId = null;
+    zeigeGym();
+  });
+  return form;
+}
+
+document.getElementById("gym-bearbeiten-knopf").addEventListener("click", function () {
+  gymBearbeiten = !gymBearbeiten;
+  gymEditId = null;
+  zeigeGym();
+});
+
+
+// --- Plan und Training importieren ---
+// Der Import-Code (beginnt mit GYMPLAN1.) enthält Plan, Startgewichte und bisherige Trainings.
+// So stehen deine Gewichte nie im öffentlichen Code, sondern kommen nur auf dein Gerät.
+
+// Prüft und säubert den Inhalt des Codes. Wirft einen Fehler, wenn etwas nicht passt.
+function bereinigeGymImport(daten) {
+  if (!daten || daten.v !== 1 || !daten.plan) throw new Error("Kein Gym-Code");
+  const sauber = { plan: { ablauf: String(daten.plan.ablauf || "") }, training: {} };
+
+  for (const einheit of GYM_EINHEITEN) {
+    const roh = daten.plan[einheit];
+    if (!roh || !Array.isArray(roh.uebungen)) throw new Error("Einheit " + einheit + " fehlt");
+    sauber.plan[einheit] = {
+      name: String(roh.name || "Gym " + einheit),
+      untertitel: String(roh.untertitel || ""),
+      uebungen: roh.uebungen.map(function (u) {
+        if (!u || !u.id || !u.name) throw new Error("Übung ohne Namen");
+        return {
+          id: String(u.id),
+          name: String(u.name),
+          einheit: GYM_KG_ARTEN.includes(u.einheit) ? u.einheit : "kg",
+          typ: GYM_TYPEN[u.typ] ? u.typ : "iso",
+          start: typeof u.start === "number" ? u.start : null,
+          notiz: String(u.notiz || "")
+        };
+      })
+    };
+  }
+
+  for (const datum in daten.training || {}) {
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(datum)) continue;
+    const tag = daten.training[datum];
+    const saetze = {};
+    for (const id in tag.saetze || {}) {
+      saetze[id] = tag.saetze[id].map(function (s) {
+        return s && s.wdh > 0 ? { kg: typeof s.kg === "number" ? s.kg : null, wdh: Number(s.wdh) } : null;
+      });
+    }
+    sauber.training[datum] = { einheit: GYM_EINHEITEN.includes(tag.einheit) ? tag.einheit : null, saetze: saetze };
+  }
+  return sauber;
+}
+
+let gymImportErgebnis = null; // merkt sich das Ergebnis zwischen „Prüfen“ und „Übernehmen“
+
+document.getElementById("gym-import-pruefen").addEventListener("click", function () {
+  const meldung = document.getElementById("gym-import-meldung");
+  const uebernehmen = document.getElementById("gym-import-uebernehmen");
+  try {
+    const daten = leseCode(document.getElementById("gym-import-text").value, "GYMPLAN1.");
+    gymImportErgebnis = bereinigeGymImport(daten);
+    const p = gymImportErgebnis.plan;
+    const tage = Object.keys(gymImportErgebnis.training);
+    meldung.textContent = "Erkannt: " + p.A.name + " mit " + p.A.uebungen.length + " Übungen, " +
+      p.B.name + " mit " + p.B.uebungen.length + " Übungen, " + tage.length +
+      (tage.length === 1 ? " Trainingstag" : " Trainingstage") +
+      (tage.length > 0 ? " (" + tage.map(punktDatum).join(", ") + ")" : "") +
+      ". Schon gemachte Sätze in der App bleiben erhalten.";
+    uebernehmen.classList.remove("versteckt");
+  } catch (fehler) {
+    meldung.textContent = "Das konnte ich nicht lesen. Bitte den ganzen Code ab „GYMPLAN1.“ einfügen.";
+    uebernehmen.classList.add("versteckt");
+  }
+});
+
+document.getElementById("gym-import-uebernehmen").addEventListener("click", function () {
+  if (laden("gym-plan", null) && !confirm("Dein bisheriger Plan wird durch den importierten ersetzt. Fortfahren?")) return;
+  speichereGymPlan(gymImportErgebnis.plan);
+
+  const gym = laden("gym", {});
+  for (const datum in gymImportErgebnis.training) {
+    const neu = gymImportErgebnis.training[datum];
+    const tag = gym[datum] || { einheit: neu.einheit, saetze: {} };
+    tag.saetze = tag.saetze || {};
+    tag.einheit = tag.einheit || neu.einheit;
+    for (const id in neu.saetze) {
+      const schonDa = (tag.saetze[id] || []).some(gymSatzGemacht);
+      if (!schonDa) tag.saetze[id] = neu.saetze[id]; // Eigene Einträge in der App haben Vorrang
+    }
+    gym[datum] = tag;
+  }
+  speichern("gym", gym);
+
+  // Importierte Trainingstage haken auch das Habit „Krafttraining“ ab
+  for (const datum in gymImportErgebnis.training) {
+    if (gymTrainiert(datum) && !habitTag(datum)["krafttraining"]) setzeHabit(datum, "krafttraining", "x");
+  }
+
+  document.getElementById("gym-import-meldung").textContent = "Fertig importiert ✓";
+  document.getElementById("gym-import-uebernehmen").classList.add("versteckt");
+  document.getElementById("gym-import-text").value = "";
+  zeigeHabits();
+  zeigeGym();
+  zeigeHeute();
+});
+
+
+// --- Fortschritt: Plan-Ring, Gesamtkurve, Linie pro Übung ---
 // Für jede Übung: Kraftwert beim ersten Training = Startwert (0 %).
 // Gesamtkurve: pro Trainingstag der Durchschnitt aller dort trainierten Übungen in % seit Start.
 
 function gymFortschrittDaten() {
   const gym = laden("gym", {});
-  const daten = Object.keys(gym).sort();
-  const start = {};    // uebungId → erster Kraftwert
-  const aktuell = {};  // uebungId → letzter Kraftwert
+  const plan = ladeGymPlan();
+  const verlauf = {};  // uebungId → [{ datum, wert }]
   const punkte = [];   // { datum, einheit, prozent }
 
-  for (const datum of daten) {
+  for (const datum of Object.keys(gym).sort()) {
     const tag = gym[datum];
-    const plan = GYM_PLAN[tag.einheit];
-    if (!plan) continue;
-    const werte = [];
-    for (const uebung of plan.uebungen) {
-      const wert = besterWert((tag.saetze || {})[uebung.id], uebung.nurWdh);
-      if (wert <= 0) continue;
-      if (start[uebung.id] === undefined) start[uebung.id] = wert;
-      aktuell[uebung.id] = wert;
-      werte.push((wert / start[uebung.id] - 1) * 100);
+    const prozente = [];
+    let tagEinheit = null;
+    for (const einheit of GYM_EINHEITEN) {
+      for (const uebung of plan[einheit].uebungen) {
+        const wert = besterWert((tag.saetze || {})[uebung.id], gymNurWdh(uebung));
+        if (wert <= 0) continue;
+        verlauf[uebung.id] = verlauf[uebung.id] || [];
+        verlauf[uebung.id].push({ datum: datum, wert: wert });
+        prozente.push((wert / verlauf[uebung.id][0].wert - 1) * 100);
+        tagEinheit = tagEinheit || einheit;
+      }
     }
-    if (werte.length > 0) {
-      const schnitt = werte.reduce(function (a, b) { return a + b; }, 0) / werte.length;
-      punkte.push({ datum: datum, einheit: tag.einheit, prozent: schnitt });
+    if (prozente.length > 0) {
+      const schnitt = prozente.reduce(function (a, b) { return a + b; }, 0) / prozente.length;
+      punkte.push({
+        datum: datum,
+        einheit: GYM_EINHEITEN.includes(tag.einheit) ? tag.einheit : tagEinheit,
+        prozent: schnitt
+      });
     }
   }
-  return { start: start, aktuell: aktuell, punkte: punkte };
+  return { verlauf: verlauf, punkte: punkte };
 }
 
 // Prozent schön: 12.34 → "+12 %", -3 → "−3 %"
@@ -902,13 +1354,37 @@ function prozentText(p) {
   return (r > 0 ? "+" : r < 0 ? "−" : "±") + Math.abs(r) + " %";
 }
 
+const SVG_NS = "http://www.w3.org/2000/svg";
+
+function svgElement(name, eigenschaften) {
+  const element = document.createElementNS(SVG_NS, name);
+  for (const schluessel in eigenschaften) element.setAttribute(schluessel, eigenschaften[schluessel]);
+  return element;
+}
+
+// Der Plan-Ring: z. B. 5 von 12 Einheiten
+function gymRing(anzahl, von) {
+  const umfang = 2 * Math.PI * 40;
+  const anteil = Math.min(anzahl, von) / von;
+  const svg = svgElement("svg", { viewBox: "0 0 100 100", class: "gym-ring" });
+  svg.append(
+    svgElement("circle", { cx: 50, cy: 50, r: 40, class: "ring-spur" }),
+    svgElement("circle", {
+      cx: 50, cy: 50, r: 40, class: "ring-fuellung",
+      "stroke-dasharray": umfang, "stroke-dashoffset": umfang * (1 - anteil),
+      transform: "rotate(-90 50 50)"                   // Start oben statt rechts
+    })
+  );
+  const zahl = svgElement("text", { x: 50, y: 56, class: "ring-zahl", "text-anchor": "middle" });
+  zahl.textContent = anzahl + "/" + von;
+  svg.append(zahl);
+  return svg;
+}
+
 // Zeichnet die Gesamtkurve als SVG (selbst gezeichnet, ohne Bibliothek)
 function gymKurve(punkte) {
-  const ns = "http://www.w3.org/2000/svg";
   const breite = 320, hoehe = 140, rand = 28;
-  const svg = document.createElementNS(ns, "svg");
-  svg.setAttribute("viewBox", "0 0 " + breite + " " + hoehe);
-  svg.setAttribute("class", "gym-kurve");
+  const svg = svgElement("svg", { viewBox: "0 0 " + breite + " " + hoehe, class: "gym-kurve" });
 
   // y-Bereich: mindestens −5 % bis +5 %, damit eine flache Kurve nicht übertrieben wirkt
   const werte = punkte.map(function (p) { return p.prozent; });
@@ -917,97 +1393,133 @@ function gymKurve(punkte) {
     return punkte.length === 1 ? breite / 2 : rand + i * (breite - rand - 10) / (punkte.length - 1);
   };
   const y = function (p) { return 10 + (oben - p) / (oben - unten) * (hoehe - 30); };
-
-  const linie = function (x1, y1, x2, y2, klasse) {
-    const l = document.createElementNS(ns, "line");
-    l.setAttribute("x1", x1); l.setAttribute("y1", y1);
-    l.setAttribute("x2", x2); l.setAttribute("y2", y2);
-    l.setAttribute("class", klasse);
-    svg.append(l);
-  };
-  const text = function (inhalt, tx, ty, klasse) {
-    const t = document.createElementNS(ns, "text");
-    t.setAttribute("x", tx); t.setAttribute("y", ty);
-    t.setAttribute("class", klasse);
+  const text = function (inhalt, tx, ty) {
+    const t = svgElement("text", { x: tx, y: ty, class: "achse" });
     t.textContent = inhalt;
     svg.append(t);
   };
 
-  // Null-Linie = Startniveau, dazu Beschriftung oben/unten
-  linie(rand, y(0), breite - 4, y(0), "nulllinie");
-  text("0 %", 0, y(0) + 4, "achse");
-  text(prozentText(oben), 0, y(oben) + 4, "achse");
+  // Null-Linie = Startniveau, dazu Beschriftung oben und bei 0
+  svg.append(svgElement("line", { x1: rand, y1: y(0), x2: breite - 4, y2: y(0), class: "nulllinie" }));
+  text("0 %", 0, y(0) + 4);
+  text(prozentText(oben), 0, y(oben) + 4);
 
   // Verbindungslinie und Punkte (Farbe je Einheit)
-  const pfad = document.createElementNS(ns, "polyline");
-  pfad.setAttribute("points", punkte.map(function (p, i) { return x(i) + "," + y(p.prozent); }).join(" "));
-  pfad.setAttribute("class", "verlauf");
-  svg.append(pfad);
+  svg.append(svgElement("polyline", {
+    points: punkte.map(function (p, i) { return x(i) + "," + y(p.prozent); }).join(" "),
+    class: "verlauf"
+  }));
   punkte.forEach(function (p, i) {
-    const kreis = document.createElementNS(ns, "circle");
-    kreis.setAttribute("cx", x(i)); kreis.setAttribute("cy", y(p.prozent)); kreis.setAttribute("r", 4.5);
-    kreis.setAttribute("class", "punkt " + p.einheit);
-    svg.append(kreis);
+    svg.append(svgElement("circle", { cx: x(i), cy: y(p.prozent), r: 4.5, class: "punkt " + p.einheit }));
   });
 
   // Datum unter erstem und letztem Punkt
-  const kurz = function (d) { return d.slice(8, 10) + "." + d.slice(5, 7) + "."; };
-  text(kurz(punkte[0].datum), x(0) - 14, hoehe - 4, "achse");
-  if (punkte.length > 1) text(kurz(punkte[punkte.length - 1].datum), x(punkte.length - 1) - 30, hoehe - 4, "achse");
+  text(punktDatum(punkte[0].datum), x(0) - 14, hoehe - 4);
+  if (punkte.length > 1) text(punktDatum(punkte[punkte.length - 1].datum), x(punkte.length - 1) - 30, hoehe - 4);
+  return svg;
+}
+
+// Kleine Verlaufslinie einer Übung (ohne Achsen): werte = Kraftwerte pro Training
+function gymLinie(werte) {
+  const breite = 120, hoehe = 28;
+  const svg = svgElement("svg", { viewBox: "0 0 " + breite + " " + hoehe, class: "gym-linie" });
+  const kleinster = Math.min(...werte), groesster = Math.max(...werte);
+  const x = function (i) { return werte.length === 1 ? breite / 2 : 6 + i * (breite - 12) / (werte.length - 1); };
+  const y = function (w) { return groesster === kleinster ? hoehe / 2 : (hoehe - 5) - (w - kleinster) / (groesster - kleinster) * (hoehe - 10); };
+
+  if (werte.length > 1) {
+    svg.append(svgElement("polyline", {
+      points: werte.map(function (w, i) { return x(i) + "," + y(w); }).join(" "),
+      class: "linie"
+    }));
+  }
+  svg.append(svgElement("circle", { cx: x(werte.length - 1), cy: y(werte[werte.length - 1]), r: 3, class: "linie-punkt" }));
   return svg;
 }
 
 function zeigeGymFortschritt() {
   const inhalt = document.getElementById("gym-fortschritt-inhalt");
   inhalt.innerHTML = "";
+  const gym = laden("gym", {});
+  const plan = ladeGymPlan();
   const daten = gymFortschrittDaten();
 
+  // 1. Plan-Ring für den aktuellen 4-Wochen-Block
+  const blockNr = Math.max(0, Math.floor(tageZwischen(GYM_START, heute()) / (7 * GYM_BLOCK_WOCHEN)));
+  const blockStart = verschiebeTag(GYM_START, blockNr * 7 * GYM_BLOCK_WOCHEN);
+  const blockEnde = verschiebeTag(blockStart, 7 * GYM_BLOCK_WOCHEN - 1);
+  const absolviert = Object.keys(gym).filter(function (d) {
+    return d >= blockStart && d <= blockEnde && gymTrainiert(d);
+  }).length;
+  const woche = heute() < GYM_START ? 0 : Math.floor(tageZwischen(blockStart, heute()) / 7) + 1;
+
+  const ringZeile = document.createElement("div");
+  ringZeile.className = "gym-ring-zeile";
+  const ringText = document.createElement("div");
+  const wocheText = document.createElement("strong");
+  wocheText.textContent = woche === 0 ? "Start am " + punktDatum(GYM_START) : "Woche " + woche + " von " + GYM_BLOCK_WOCHEN;
+  const zeitraum = document.createElement("span");
+  zeitraum.textContent = punktDatum(blockStart) + " – " + punktDatum(blockEnde);
+  const zaehler = document.createElement("span");
+  zaehler.textContent = absolviert + " von " + GYM_PRO_BLOCK + " Einheiten";
+  ringText.append(wocheText, zeitraum, zaehler);
+  ringZeile.append(gymRing(absolviert, GYM_PRO_BLOCK), ringText);
+  inhalt.append(ringZeile);
+
+  // 2. Nach dem Block: Erinnerung, den Plan zu überprüfen (bis du sie wegtippst)
+  const pruefDatum = verschiebeTag(blockStart, 7 * GYM_BLOCK_WOCHEN - 3); // Freitag der letzten Woche
+  if (heute() >= pruefDatum && laden("gym-review-ok", -1) < blockNr) {
+    const pruefen = document.createElement("p");
+    pruefen.className = "frueherer-tag";
+    pruefen.append(GYM_BLOCK_WOCHEN + " Wochen geschafft: Zeit, den Plan zu überprüfen (✏️ Plan bearbeiten). ");
+    const erledigt = document.createElement("button");
+    erledigt.textContent = "Erledigt";
+    erledigt.addEventListener("click", function () {
+      speichern("gym-review-ok", blockNr);
+      zeigeGymFortschritt();
+    });
+    pruefen.append(erledigt);
+    inhalt.append(pruefen);
+  }
+
   if (daten.punkte.length === 0) {
-    inhalt.textContent = "Sobald du ein Training eingetragen hast, siehst du hier deinen Fortschritt.";
+    const leer = document.createElement("p");
+    leer.className = "hinweis";
+    leer.textContent = "Sobald du Sätze mit ✓ bestätigt hast, siehst du hier deinen Fortschritt.";
+    inhalt.append(leer);
     return;
   }
 
-  // 1. Gesamtkurve
+  // 3. Gesamtkurve
   const kopf = document.createElement("p");
-  const letzter = daten.punkte[daten.punkte.length - 1];
-  kopf.innerHTML = "";
   kopf.append("Gesamt (Ø aller Übungen): ");
   const zahl = document.createElement("strong");
-  zahl.textContent = prozentText(letzter.prozent);
+  zahl.textContent = prozentText(daten.punkte[daten.punkte.length - 1].prozent);
   kopf.append(zahl, " seit Start");
   const legende = document.createElement("p");
   legende.className = "hinweis gym-legende";
-  legende.innerHTML = '<span class="punkt-legende leg"></span>Leg <span class="punkt-legende push"></span>Push <span class="punkt-legende pull"></span>Pull';
+  legende.innerHTML = '<span class="punkt-legende A"></span>Gym A <span class="punkt-legende B"></span>Gym B';
   inhalt.append(kopf, gymKurve(daten.punkte), legende);
 
-  // 2. Balken pro Übung, nach Einheit gruppiert
-  let groesster = 10; // Balkenlänge relativ zum größten Fortschritt (mind. 10 %)
-  for (const id in daten.start) {
-    groesster = Math.max(groesster, Math.abs((daten.aktuell[id] / daten.start[id] - 1) * 100));
-  }
-  for (const einheit in GYM_PLAN) {
-    const uebungen = GYM_PLAN[einheit].uebungen.filter(function (u) { return daten.start[u.id] !== undefined; });
+  // 4. Eine kleine Linie pro Übung, nach Einheit gruppiert
+  for (const einheit of GYM_EINHEITEN) {
+    const uebungen = plan[einheit].uebungen.filter(function (u) { return daten.verlauf[u.id]; });
     if (uebungen.length === 0) continue;
     const titel = document.createElement("h3");
-    titel.textContent = GYM_PLAN[einheit].name;
+    titel.textContent = plan[einheit].name + (plan[einheit].untertitel ? " · " + plan[einheit].untertitel : "");
     inhalt.append(titel);
 
-    for (const u of uebungen) {
-      const prozent = (daten.aktuell[u.id] / daten.start[u.id] - 1) * 100;
+    for (const uebung of uebungen) {
+      const werte = daten.verlauf[uebung.id].map(function (v) { return v.wert; });
+      const prozent = (werte[werte.length - 1] / werte[0] - 1) * 100;
       const zeile = document.createElement("div");
-      zeile.className = "gym-balken";
+      zeile.className = "gym-fortschritt-zeile";
       const name = document.createElement("span");
-      name.textContent = u.name;
-      const spur = document.createElement("span");
-      spur.className = "spur";
-      const fuellung = document.createElement("span");
-      fuellung.className = "fuellung " + einheit + (prozent < 0 ? " minus" : "");
-      fuellung.style.width = Math.min(100, Math.abs(prozent) / groesster * 100) + "%";
-      spur.append(fuellung);
+      name.textContent = uebung.name;
       const wert = document.createElement("span");
-      wert.className = "wert";
-      wert.textContent = prozentText(prozent);
-      zeile.append(name, spur, wert);
+      wert.className = "wert" + (prozent < 0 ? " minus" : "");
+      wert.textContent = werte.length > 1 ? prozentText(prozent) : "neu";
+      zeile.append(name, gymLinie(werte), wert);
       inhalt.append(zeile);
     }
   }
@@ -1287,17 +1799,18 @@ function entpacke(code) {
   return JSON.parse(new TextDecoder("utf-8", { fatal: true }).decode(bytes));
 }
 
-// Liest den Code aus einem Text. Gibt das JSON-Objekt zurück oder wirft einen Fehler.
-function leseAppCode(text) {
+// Liest eine Code-Zeile mit dem Anfang „praefix“ (z. B. "TAGESAPP1.") aus einem Text.
+// Gibt das JSON-Objekt dahinter zurück oder wirft einen Fehler.
+function leseCode(text, praefix) {
   // Unsichtbare Zeichen entfernen, die Mail-Apps in lange Wörter einbauen
   // (weiches Trennzeichen, Null-Breite-Leerzeichen u. Ä.)
   text = text.replace(/[­​-‍⁠﻿]/g, "").replace(/ /g, " ");
-  const start = text.indexOf("TAGESAPP1.");
-  if (start === -1) throw new Error("Kein App-Code gefunden");
+  const start = text.indexOf(praefix);
+  if (start === -1) throw new Error("Kein Code gefunden");
 
   // Manche Mail-Apps brechen lange Zeilen um. Darum sammeln wir den Code-Anfang und
   // die direkt folgenden Zeilen, die nur aus Code-Zeichen bestehen …
-  const zeilen = text.slice(start + "TAGESAPP1.".length).split(/\r?\n/);
+  const zeilen = text.slice(start + praefix.length).split(/\r?\n/);
   const stuecke = [];
   for (const zeile of zeilen) {
     const teil = zeile.trim();
@@ -1311,18 +1824,22 @@ function leseAppCode(text) {
   // … und probieren dann von der längsten Variante abwärts, welche sich entpacken lässt.
   // So stört es nicht, wenn direkt darunter z. B. ein einzelnes Wort steht.
   for (let anzahl = stuecke.length; anzahl >= 1; anzahl--) {
-    let daten;
     try {
-      daten = entpacke(stuecke.slice(0, anzahl).join(""));
+      return entpacke(stuecke.slice(0, anzahl).join(""));
     } catch (fehler) {
       continue; // passt nicht – eine Zeile weniger probieren
     }
-    if (daten.v !== 1 || (daten.art !== "morgen" && daten.art !== "abend")) {
-      throw new Error("Unbekannte Code-Version");
-    }
-    return daten;
   }
-  throw new Error("App-Code beschädigt");
+  throw new Error("Code beschädigt");
+}
+
+// Liest den App-Code der Morgen-/Abend-Mail
+function leseAppCode(text) {
+  const daten = leseCode(text, "TAGESAPP1.");
+  if (daten.v !== 1 || (daten.art !== "morgen" && daten.art !== "abend")) {
+    throw new Error("Unbekannte Code-Version");
+  }
+  return daten;
 }
 
 // Welches Habit hakt eine Strava-Einheit ab?
@@ -1524,8 +2041,9 @@ function zeigeHeute() {
   const einheitHeute = gymEinheit(heute());
   if (einheitHeute) {
     const trainiert = gymTrainiert(heute());
+    const gymPlan = ladeGymPlan()[einheitHeute];
     kaesten.append(heuteKasten(
-      "Heute: " + GYM_PLAN[einheitHeute].name + "-Day",
+      "Heute: " + gymPlan.name + (gymPlan.untertitel ? " (" + gymPlan.untertitel + ")" : ""),
       trainiert ? "Training eingetragen" : "Noch nicht eingetragen",
       [],
       "gym",
@@ -1533,7 +2051,7 @@ function zeigeHeute() {
     ));
   }
 
-  // 3. Tagebuch: je TAGEBUCH_ZIEL Einträge bei „dankbar“ und „für mich“ → grün
+  // 3. Tagebuch: grün, sobald bei „geleistet“ mindestens 2 Einträge stehen (Dankbar = Zusatz)
   const tag = laden("tagebuch", {})[heute()] || leererTagebuchTag();
   const gefuellt = function (liste) {
     return (liste || []).filter(function (z) { return z.trim() !== ""; }).length;
@@ -1542,10 +2060,10 @@ function zeigeHeute() {
   const anzahlFuerMich = gefuellt(tag.fuerMich);
   kaesten.append(heuteKasten(
     "Tagebuch",
-    "Dankbar: " + anzahlDankbar + " · Für mich: " + anzahlFuerMich + " (Ziel: je " + TAGEBUCH_ZIEL + ")",
+    "Geleistet: " + anzahlFuerMich + " (Ziel: mind. " + TAGEBUCH_MIN_GELEISTET + ") · Dankbar: " + anzahlDankbar,
     [],
     "tagebuch",
-    anzahlDankbar >= TAGEBUCH_ZIEL && anzahlFuerMich >= TAGEBUCH_ZIEL
+    anzahlFuerMich >= TAGEBUCH_MIN_GELEISTET
   ));
 
   // 4. Sport diese Woche
