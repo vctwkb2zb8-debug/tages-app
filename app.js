@@ -674,8 +674,8 @@ zeigeAffirmationen();
 // Ein Satz zählt als gemacht, sobald er gespeichert ist (✓ getippt oder ein Wert geändert).
 
 const GYM_START = "2026-10-26";      // Montag der Woche 1
-const GYM_BLOCK_WOCHEN = 4;          // zunächst 4 Wochen, danach Plan überprüfen
-const GYM_PRO_BLOCK = GYM_BLOCK_WOCHEN * 3;
+const GYM_BLOCK_WOCHEN = 4;          // nach 4 Wochen erinnert die App ans Überprüfen des Plans
+const GYM_PRO_WOCHE = 3;             // Mo, Mi, Fr
 const GYM_SAETZE = 2;
 const GYM_WDH_MIN = 6;               // darunter: Gewicht reduzieren
 const GYM_WDH_ZIEL = 10;             // 2× so viele: Gewicht erhöhen
@@ -1511,30 +1511,33 @@ function zeigeGymFortschritt() {
   const plan = ladeGymPlan();
   const daten = gymFortschrittDaten();
 
-  // 1. Plan-Ring für den aktuellen 4-Wochen-Block
+  // 1. Plan-Ring für die aktuelle Woche (Mo–So): x von 3 Einheiten
+  const wochenStart = montagVon(heute());
+  const wochenEnde = verschiebeTag(wochenStart, 6);
+  const absolviert = Object.keys(gym).filter(function (d) {
+    return d >= wochenStart && d <= wochenEnde && gymTrainiert(d);
+  }).length;
+  const wochenNr = heute() < GYM_START ? 0 : Math.floor(tageZwischen(GYM_START, heute()) / 7) + 1;
+
+  // Der 4-Wochen-Block wird nur noch für die Erinnerung „Plan überprüfen“ gebraucht
   const blockNr = Math.max(0, Math.floor(tageZwischen(GYM_START, heute()) / (7 * GYM_BLOCK_WOCHEN)));
   const blockStart = verschiebeTag(GYM_START, blockNr * 7 * GYM_BLOCK_WOCHEN);
-  const blockEnde = verschiebeTag(blockStart, 7 * GYM_BLOCK_WOCHEN - 1);
-  const absolviert = Object.keys(gym).filter(function (d) {
-    return d >= blockStart && d <= blockEnde && gymTrainiert(d);
-  }).length;
-  const woche = heute() < GYM_START ? 0 : Math.floor(tageZwischen(blockStart, heute()) / 7) + 1;
 
   const ringZeile = document.createElement("div");
   ringZeile.className = "gym-ring-zeile";
   const ringText = document.createElement("div");
   const wocheText = document.createElement("strong");
-  wocheText.textContent = woche === 0 ? "Start am " + punktDatum(GYM_START) : "Woche " + woche + " von " + GYM_BLOCK_WOCHEN;
+  wocheText.textContent = wochenNr === 0 ? "Start am " + punktDatum(GYM_START) : "Woche " + wochenNr;
   const zeitraum = document.createElement("span");
-  zeitraum.textContent = punktDatum(blockStart) + " – " + punktDatum(blockEnde);
+  zeitraum.textContent = punktDatum(wochenStart) + " – " + punktDatum(wochenEnde);
   const zaehler = document.createElement("span");
-  zaehler.textContent = absolviert + " von " + GYM_PRO_BLOCK + " Einheiten";
-  // Alle Einheiten seit Beginn, nicht auf den 4-Wochen-Block begrenzt
+  zaehler.textContent = absolviert + " von " + GYM_PRO_WOCHE + " Einheiten";
+  // Alle Einheiten seit Beginn, ohne Begrenzung
   const gesamt = Object.keys(gym).filter(gymTrainiert).length;
   const gesamtZeile = document.createElement("span");
   gesamtZeile.textContent = "Insgesamt: " + gesamt + (gesamt === 1 ? " Einheit" : " Einheiten");
   ringText.append(wocheText, zeitraum, zaehler, gesamtZeile);
-  ringZeile.append(gymRing(absolviert, GYM_PRO_BLOCK), ringText);
+  ringZeile.append(gymRing(absolviert, GYM_PRO_WOCHE), ringText);
   inhalt.append(ringZeile);
 
   // 2. Nach dem Block: Erinnerung, den Plan zu überprüfen (bis du sie wegtippst)
