@@ -398,17 +398,10 @@ textarea {
   font-size: 14px;
 }
 
-.gym-info details {
-  margin-top: 6px;
+.gym-info span {
+  display: block;
+  margin-top: 2px;
   color: var(--text-leise);
-}
-
-.gym-info summary {
-  cursor: pointer;
-}
-
-.gym-info p {
-  margin: 6px 0 0;
 }
 
 /* Eine Übung = eine Karte */
@@ -473,15 +466,24 @@ textarea {
   color: var(--text-leise);
 }
 
+/* Übung zum Abhaken (z. B. Dehnen): Name links, ✓ rechts */
+.gym-haken-karte {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
 /* Gemachter Satz: ✓ in der Akzentfarbe, Felder mit grünem Rand */
-.gym-satz.gemacht .gym-haken {
+.gym-satz.gemacht .gym-haken,
+.gym-haken-karte.gemacht .gym-haken {
   background: var(--akzent);
   border-color: var(--akzent);
   color: var(--karte);
   font-weight: 700;
 }
 
-.gym-satz.gemacht input {
+.gym-satz.gemacht input,
+.gym-haken-karte.gemacht {
   border-color: var(--akzent);
 }
 

@@ -664,11 +664,13 @@ zeigeAffirmationen();
 // Der PLAN liegt auf dem Handy unter "gym-plan" und lässt sich in der App ändern (✏️).
 // Im Code steht nur eine Standard-Vorlage mit Übungsnamen, keine Gewichte, denn der Code
 // ist öffentlich. Gewichte kommen über den Import oder die Eingabe in der App.
-//   gym-plan = { A: { name, untertitel, uebungen: [{ id, name, einheit, typ, start, notiz }] },
-//                B: { … }, ablauf: "Text" }
+//   gym-plan = { A: { name, untertitel, uebungen: [{ id, name, einheit, start }] }, B: { … } }
+// "einheit" ist die Gewichtsart: "kg", "kg je Hand", "kg Scheiben gesamt", "nur Wdh." oder
+// "nur abhaken" (z. B. Dehnen: kein Gewicht, nur ein Haken pro Training).
 //
 // Das TRAINING liegt unter "gym", ein Eintrag pro Tag:
-//   { "2026-10-26": { einheit: "A", saetze: { beinpresse: [{ kg: 69, wdh: 10 }, { kg: 69, wdh: 10 }] } } }
+//   { "2026-10-26": { einheit: "A", saetze: { beinpresse: [{ kg: 69, wdh: 10 }, { kg: 69, wdh: 10 }] },
+//                     haken: { dehnen: true } } }
 // Ein Satz zählt als gemacht, sobald er gespeichert ist (✓ getippt oder ein Wert geändert).
 
 const GYM_START = "2026-10-26";      // Montag der Woche 1
@@ -678,37 +680,36 @@ const GYM_SAETZE = 2;
 const GYM_WDH_MIN = 6;               // darunter: Gewicht reduzieren
 const GYM_WDH_ZIEL = 10;             // 2× so viele: Gewicht erhöhen
 const GYM_EINHEITEN = ["A", "B"];
-const GYM_KG_ARTEN = ["kg", "kg je Hand", "kg Scheiben gesamt", "nur Wdh."];
-const GYM_TYPEN = { grund: "Grundübung", iso: "Isolation" };
-const GYM_PAUSE = { grund: "Pause 90–120 s", iso: "Pause 60–75 s" };
+const GYM_KG_ARTEN = ["kg", "kg je Hand", "kg Scheiben gesamt", "nur Wdh.", "nur abhaken"];
 
-function gymUebung(id, name, typ, kgArt) {
-  return { id: id, name: name, typ: typ, einheit: kgArt || "kg", start: null, notiz: "" };
+function gymUebung(id, name, kgArt) {
+  return { id: id, name: name, einheit: kgArt || "kg", start: null };
 }
 
 const GYM_STANDARD_PLAN = {
   A: { name: "Gym A", untertitel: "Push + Beine", uebungen: [
-    gymUebung("beinpresse", "Beinpresse", "grund"),
-    gymUebung("hip-thrust", "Hip Thrust", "grund", "kg Scheiben gesamt"),
-    gymUebung("beinstrecker", "Beinstrecker", "iso"),
-    gymUebung("brustpresse", "Brustpresse", "grund"),
-    gymUebung("schulterpresse", "Schulterpresse (Kurzhanteln)", "grund", "kg je Hand"),
-    gymUebung("seitheben", "Seitheben", "iso", "kg je Hand"),
-    gymUebung("trizeps-kabel", "Trizepsdrücken (Kabel)", "iso"),
-    gymUebung("pec-fly", "Pec Fly", "iso")
+    gymUebung("beinpresse", "Beinpresse"),
+    gymUebung("hip-thrust", "Hip Thrust", "kg Scheiben gesamt"),
+    gymUebung("beinstrecker", "Beinstrecker"),
+    gymUebung("brustpresse", "Brustpresse"),
+    gymUebung("schulterpresse", "Schulterpresse (Kurzhanteln)", "kg je Hand"),
+    gymUebung("seitheben", "Seitheben", "kg je Hand"),
+    gymUebung("trizeps-kabel", "Trizepsdrücken (Kabel)"),
+    gymUebung("pec-fly", "Pec Fly"),
+    gymUebung("dehnen", "Dehnen", "nur abhaken")
   ] },
   B: { name: "Gym B", untertitel: "Pull + Beine", uebungen: [
-    gymUebung("beinbeuger", "Beinbeuger (Prone Leg Curl)", "iso"),
-    gymUebung("huefte-abduktion", "Hüftabduktion", "iso"),
-    gymUebung("huefte-adduktion", "Hüftadduktion", "iso"),
-    gymUebung("wadenheben", "Wadenheben", "iso"),
-    gymUebung("latzug", "Latzug", "grund"),
-    gymUebung("seated-row", "Seated Row", "grund"),
-    gymUebung("rear-delt", "Rear Delt", "iso"),
-    gymUebung("incline-curls", "Incline Curls", "iso", "kg je Hand"),
-    gymUebung("hammer-curls", "Hammer Curls", "iso", "kg je Hand")
-  ] },
-  ablauf: ""
+    gymUebung("beinbeuger", "Beinbeuger (Prone Leg Curl)"),
+    gymUebung("huefte-abduktion", "Hüftabduktion"),
+    gymUebung("huefte-adduktion", "Hüftadduktion"),
+    gymUebung("wadenheben", "Wadenheben"),
+    gymUebung("latzug", "Latzug"),
+    gymUebung("seated-row", "Seated Row"),
+    gymUebung("rear-delt", "Rear Delt"),
+    gymUebung("incline-curls", "Incline Curls", "kg je Hand"),
+    gymUebung("hammer-curls", "Hammer Curls", "kg je Hand"),
+    gymUebung("dehnen", "Dehnen", "nur abhaken")
+  ] }
 };
 
 let gymBearbeiten = false;   // Plan-bearbeiten-Modus an?
@@ -721,6 +722,23 @@ function ladeGymPlan() {
 
 function speichereGymPlan(plan) {
   speichern("gym-plan", plan);
+}
+
+// Einmalige Ergänzung (26.10.2026): „Dehnen“ als abhakbare Übung am Ende von Gym A und B,
+// auch in einem Plan, der schon auf dem Handy gespeichert ist. Wer Dehnen später löscht,
+// bekommt es nicht wieder zurück.
+if (!laden("gym-dehnen-ergaenzt", false)) {
+  const gespeichert = laden("gym-plan", null);
+  if (gespeichert) {
+    for (const einheit of GYM_EINHEITEN) {
+      const uebungen = gespeichert[einheit].uebungen;
+      if (!uebungen.some(function (u) { return u.id === "dehnen"; })) {
+        uebungen.push(gymUebung("dehnen", "Dehnen", "nur abhaken"));
+      }
+    }
+    speichereGymPlan(gespeichert);
+  }
+  speichern("gym-dehnen-ergaenzt", true);
 }
 
 function gymNurWdh(uebung) {
@@ -870,9 +888,7 @@ function zeigeGym() {
     knopf.classList.toggle("aktiv", knopf.dataset.einheit === einheit);
   }
 
-  // Ablauf (nur wenn im Plan hinterlegt) und Bearbeiten-Knöpfe
-  document.getElementById("gym-ablauf").classList.toggle("versteckt", !plan.ablauf);
-  document.getElementById("gym-ablauf-text").textContent = plan.ablauf || "";
+  // Bearbeiten-Knöpfe
   document.getElementById("gym-bearbeiten-knopf").textContent = gymBearbeiten ? "Fertig" : "✏️ Plan bearbeiten";
   document.getElementById("gym-import").classList.toggle("versteckt", !gymBearbeiten);
 
@@ -899,6 +915,12 @@ function zeigeGymUebungen(plan, einheit, tag) {
   const liste = document.getElementById("gym-uebungen");
 
   for (const uebung of plan[einheit].uebungen) {
+    // Übungen ohne Gewicht (z. B. Dehnen): nur ein Haken pro Training
+    if (uebung.einheit === "nur abhaken") {
+      liste.append(gymHakenKarte(uebung, tag));
+      continue;
+    }
+
     const vorher = letztesTraining(uebung.id, gewaehlterTag);
 
     const karte = document.createElement("div");
@@ -907,15 +929,11 @@ function zeigeGymUebungen(plan, einheit, tag) {
     titel.textContent = uebung.name;
     karte.append(titel);
 
-    // Kleine graue Zeile: Gewichtsart, Pausenempfehlung, Notiz
-    const meta = [];
-    if (uebung.einheit !== "kg") meta.push(uebung.einheit.replace(/^kg /, ""));
-    if (GYM_PAUSE[uebung.typ]) meta.push(GYM_PAUSE[uebung.typ]);
-    if (uebung.notiz) meta.push(uebung.notiz);
-    if (meta.length > 0) {
+    // Kleine graue Zeile, nur wenn nötig: „je Hand“, „Scheiben gesamt“, „nur Wdh.“
+    if (uebung.einheit !== "kg") {
       const metaZeile = document.createElement("span");
       metaZeile.className = "gym-meta";
-      metaZeile.textContent = meta.join(" · ");
+      metaZeile.textContent = uebung.einheit.replace(/^kg /, "");
       karte.append(metaZeile);
     }
 
@@ -937,7 +955,56 @@ function zeigeGymUebungen(plan, einheit, tag) {
   }
 }
 
-// Eine Satz-Zeile: Nummer, kg, Wdh., ✓ und „Letztes Mal“.
+// Merkt sich einen Haken (z. B. Dehnen) für den gewählten Tag
+function speichereHaken(uebungId, wert) {
+  const gym = laden("gym", {});
+  const tag = gym[gewaehlterTag] || { einheit: gymEinheit(gewaehlterTag), saetze: {} };
+  tag.haken = tag.haken || {};
+  if (wert) {
+    tag.haken[uebungId] = true;
+  } else {
+    delete tag.haken[uebungId];
+  }
+  gym[gewaehlterTag] = tag;
+  speichern("gym", gym);
+
+  // Dehnen gemacht → auch das Habit „Dehnen/Haltung“ abhaken (nur wenn dort noch nichts steht)
+  if (wert && uebungId === "dehnen" && !habitTag(gewaehlterTag)["dehnen"]) {
+    setzeHabit(gewaehlterTag, "dehnen", "x");
+    zeigeHabits();
+  }
+}
+
+// Eine Übung zum Abhaken: Name links, ✓ rechts
+function gymHakenKarte(uebung, tag) {
+  let gemacht = Boolean((tag.haken || {})[uebung.id]);
+
+  const karte = document.createElement("div");
+  karte.className = "gym-uebung gym-haken-karte";
+  const titel = document.createElement("strong");
+  titel.textContent = uebung.name;
+  const haken = document.createElement("button");
+  haken.type = "button";
+  haken.className = "gym-haken";
+  haken.textContent = "✓";
+  haken.title = "Gemacht";
+
+  function aktualisiere() {
+    karte.classList.toggle("gemacht", gemacht);
+    haken.setAttribute("aria-pressed", gemacht ? "true" : "false");
+  }
+  haken.addEventListener("click", function () {
+    gemacht = !gemacht;
+    speichereHaken(uebung.id, gemacht);
+    aktualisiere();
+  });
+
+  karte.append(titel, haken);
+  aktualisiere();
+  return karte;
+}
+
+// Eine Satz-Zeile: Nummer, kg, Wdh., ✓ und „Zuletzt“.
 // Die Felder sind vorausgefüllt; der Satz zählt erst, wenn du ✓ tippst oder einen Wert änderst.
 function gymSatzZeile(uebung, nr, tag, vorher) {
   const nurWdh = gymNurWdh(uebung);
@@ -1161,8 +1228,6 @@ function gymEditForm(einheit, uebung) {
   nameFeld.required = true;
   const startFeld = eingabe(w.start == null ? "" : deutscheZahl(w.start), "z. B. 40", "decimal");
   const artFeld = auswahl(arten, w.einheit);
-  const typFeld = auswahl(GYM_TYPEN, w.typ);
-  const notizFeld = eingabe(w.notiz, "z. B. Sitz 2 · Gerät in 8-kg-Schritten");
 
   const knoepfe = document.createElement("div");
   knoepfe.className = "gym-edit-knoepfe";
@@ -1179,8 +1244,6 @@ function gymEditForm(einheit, uebung) {
     mitBeschriftung("Name", nameFeld),
     mitBeschriftung("Startgewicht (gilt bis zum ersten Training)", startFeld),
     mitBeschriftung("Gewichtsart", artFeld),
-    mitBeschriftung("Typ (bestimmt die Pausenempfehlung)", typFeld),
-    mitBeschriftung("Notiz", notizFeld),
     knoepfe
   );
 
@@ -1191,9 +1254,7 @@ function gymEditForm(einheit, uebung) {
     const daten = {
       name: name,
       einheit: artFeld.value,
-      typ: typFeld.value,
-      start: leseZahl(startFeld.value),
-      notiz: notizFeld.value.trim()
+      start: leseZahl(startFeld.value)
     };
     const plan = ladeGymPlan();
     if (uebung) {
@@ -1222,7 +1283,7 @@ document.getElementById("gym-bearbeiten-knopf").addEventListener("click", functi
 // Prüft und säubert den Inhalt des Codes. Wirft einen Fehler, wenn etwas nicht passt.
 function bereinigeGymImport(daten) {
   if (!daten || daten.v !== 1 || !daten.plan) throw new Error("Kein Gym-Code");
-  const sauber = { plan: { ablauf: String(daten.plan.ablauf || "") }, training: {} };
+  const sauber = { plan: {}, training: {} };
 
   for (const einheit of GYM_EINHEITEN) {
     const roh = daten.plan[einheit];
@@ -1236,12 +1297,18 @@ function bereinigeGymImport(daten) {
           id: String(u.id),
           name: String(u.name),
           einheit: GYM_KG_ARTEN.includes(u.einheit) ? u.einheit : "kg",
-          typ: GYM_TYPEN[u.typ] ? u.typ : "iso",
-          start: typeof u.start === "number" ? u.start : null,
-          notiz: String(u.notiz || "")
+          start: typeof u.start === "number" ? u.start : null
         };
       })
     };
+  }
+
+  // „Dehnen“ gehört zu jeder Einheit; fehlt es im Code, wird es angehängt
+  for (const einheit of GYM_EINHEITEN) {
+    const uebungen = sauber.plan[einheit].uebungen;
+    if (!uebungen.some(function (u) { return u.id === "dehnen"; })) {
+      uebungen.push(gymUebung("dehnen", "Dehnen", "nur abhaken"));
+    }
   }
 
   for (const datum in daten.training || {}) {
@@ -1462,7 +1529,11 @@ function zeigeGymFortschritt() {
   zeitraum.textContent = punktDatum(blockStart) + " – " + punktDatum(blockEnde);
   const zaehler = document.createElement("span");
   zaehler.textContent = absolviert + " von " + GYM_PRO_BLOCK + " Einheiten";
-  ringText.append(wocheText, zeitraum, zaehler);
+  // Alle Einheiten seit Beginn, nicht auf den 4-Wochen-Block begrenzt
+  const gesamt = Object.keys(gym).filter(gymTrainiert).length;
+  const gesamtZeile = document.createElement("span");
+  gesamtZeile.textContent = "Insgesamt: " + gesamt + (gesamt === 1 ? " Einheit" : " Einheiten");
+  ringText.append(wocheText, zeitraum, zaehler, gesamtZeile);
   ringZeile.append(gymRing(absolviert, GYM_PRO_BLOCK), ringText);
   inhalt.append(ringZeile);
 
