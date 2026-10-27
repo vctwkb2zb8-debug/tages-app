@@ -107,6 +107,10 @@ function tagesName(datum) {
 // Setzt den gewählten Tag und baut Habits und Tagebuch dafür neu auf
 function waehleTag(datum) {
   if (datum > heute()) return; // nicht in die Zukunft
+  if (datum !== gewaehlterTag) {
+    gymAnsicht = null;          // neue Tagesauswahl: wieder die Einheit laut Reihenfolge
+    gymEditId = null;
+  }
   gewaehlterTag = datum;
 
   for (const anzeige of document.querySelectorAll(".tag-anzeige")) {
@@ -290,7 +294,9 @@ document.getElementById("habits-bearbeiten-knopf").addEventListener("click", fun
   const liste = document.getElementById("habit-liste");
   liste.classList.toggle("bearbeiten-modus");
   document.getElementById("habit-neu").classList.toggle("versteckt");
-  this.textContent = liste.classList.contains("bearbeiten-modus") ? "Fertig" : "Habits bearbeiten";
+  const offen = liste.classList.contains("bearbeiten-modus");
+  this.textContent = offen ? "Fertig" : "Habits bearbeiten";
+  this.classList.toggle("offen", offen);   // Aussehen im CSS: gefüllt, solange man bearbeitet
 });
 
 document.getElementById("habit-neu").addEventListener("submit", function (ereignis) {
@@ -520,11 +526,14 @@ zeigeAffirmationen();
 
 
 // ===== Gym =====
-// Ein Trainingsplan, am Anfang leer. Übungen legt man selbst an (✏️ Plan bearbeiten).
+// Der Trainingsplan ist am Anfang leer. Übungen legt man selbst an (Plan bearbeiten).
+// In den Einstellungen wählt man den Split: 1 = Ganzkörper (nur A), 2 = A/B, 3 = A/B/C.
+// Die Einheiten kommen der Reihe nach dran und wiederholen sich: A, B, C, A, B, C …
 //
 // Der PLAN liegt auf dem Handy unter "gym-plan":
-//   gym-plan = { A: { name, untertitel, uebungen: [{ id, name, einheit, start }] } }
-// (Der Plan heißt intern „A“ – so bleibt Platz, falls später mehrere Pläne dazukommen.)
+//   gym-plan = { A: { name, untertitel, uebungen: [{ id, name, einheit, start }] }, B: …, C: … }
+// Ein leerer Name heißt „Training A“ usw. Einheiten, die der Split gerade nicht nutzt,
+// bleiben gespeichert (falls man später wieder von 2 auf 3 wechselt).
 // "einheit" ist die Gewichtsart: "kg", "kg je Hand", "kg Scheiben gesamt", "nur Wdh." oder
 // "nur abhaken" (z. B. Dehnen: kein Gewicht, nur ein Haken pro Training).
 //
@@ -536,19 +545,32 @@ zeigeAffirmationen();
 const GYM_SAETZE = 2;
 const GYM_WDH_MIN = 6;               // darunter: Gewicht reduzieren
 const GYM_WDH_ZIEL = 10;             // 2× so viele: Gewicht erhöhen
-const GYM_EINHEITEN = ["A"];
+const GYM_EINHEITEN = ["A", "B", "C"];   // alle möglichen Einheiten
 const GYM_KG_ARTEN = ["kg", "kg je Hand", "kg Scheiben gesamt", "nur Wdh.", "nur abhaken"];
-
-const GYM_STANDARD_PLAN = {
-  A: { name: "Training", untertitel: "", uebungen: [] }
-};
 
 let gymBearbeiten = false;   // Plan-bearbeiten-Modus an?
 let gymEditId = null;        // welche Übung gerade im Formular ist ("neu" = neue Übung)
+let gymAnsicht = null;       // von Hand gewählte Einheit für den gerade offenen Tag (sonst null)
 
-// Der Plan: der gespeicherte, sonst eine Kopie der Standard-Vorlage
+// Die Einheiten, die der gewählte Split gerade nutzt, z. B. ["A", "B"]
+function aktiveEinheiten() {
+  return GYM_EINHEITEN.slice(0, gymSplit());
+}
+
+// Der Plan: der gespeicherte, fehlende Einheiten kommen leer dazu
 function ladeGymPlan() {
-  return laden("gym-plan", null) || JSON.parse(JSON.stringify(GYM_STANDARD_PLAN));
+  const plan = laden("gym-plan", null) || {};
+  for (const e of GYM_EINHEITEN) {
+    if (!plan[e]) plan[e] = { name: "", untertitel: "", uebungen: [] };
+  }
+  return plan;
+}
+
+// Anzeigename einer Einheit: der selbst gewählte, sonst „Training A“ (bei 1 nur „Training“)
+function gymName(plan, einheit) {
+  const name = plan[einheit].name;
+  if (name && name !== "Training") return name;
+  return gymSplit() > 1 ? "Training " + einheit : "Training";
 }
 
 function speichereGymPlan(plan) {
@@ -564,22 +586,37 @@ function punktDatum(datum) {
   return datum.slice(8, 10) + "." + datum.slice(5, 7) + ".";
 }
 
-// Die Einheit eines Tages – es gibt nur den einen Plan
-function gymEinheit(datum) {
-  return "A";
-}
-
 function gymSatzGemacht(satz) {
   return Boolean(satz && satz.wdh > 0);
 }
 
-// Wurde an diesem Tag mindestens ein Satz gemacht?
+// Wurde an diesem Tag mindestens ein Satz gemacht (oder etwas abgehakt)?
 function gymTrainiert(datum) {
   const eintrag = laden("gym", {})[datum];
   if (!eintrag) return false;
-  return Object.values(eintrag.saetze || {}).some(function (saetze) {
+  const satzGemacht = Object.values(eintrag.saetze || {}).some(function (saetze) {
     return saetze.some(gymSatzGemacht);
   });
+  return satzGemacht || Object.keys(eintrag.haken || {}).length > 0;
+}
+
+// Welche Einheit ist laut Reihenfolge dran? Die nach dem letzten Training vor diesem Tag
+// (A → B → C → A …). Gab es noch keins, oder war die letzte Einheit nicht mehr im Split, ist es A.
+function gymVorschlag(datum) {
+  const gym = laden("gym", {});
+  const aktiv = aktiveEinheiten();
+  const tage = Object.keys(gym).filter(function (d) { return d < datum && gymTrainiert(d); }).sort();
+  if (tage.length === 0) return aktiv[0];
+  const zuletzt = aktiv.indexOf(gym[tage[tage.length - 1]].einheit);
+  return zuletzt === -1 ? aktiv[0] : aktiv[(zuletzt + 1) % aktiv.length];
+}
+
+// Die Einheit eines Tages: von Hand gewählt, sonst die gespeicherte, sonst der Vorschlag
+function gymEinheit(datum) {
+  if (datum === gewaehlterTag && gymAnsicht && aktiveEinheiten().includes(gymAnsicht)) return gymAnsicht;
+  const eintrag = laden("gym", {})[datum];
+  if (eintrag && aktiveEinheiten().includes(eintrag.einheit)) return eintrag.einheit;
+  return gymVorschlag(datum);
 }
 
 // „Kraftwert“ eines Satzes: verbindet Gewicht und Wiederholungen zu einer Zahl,
@@ -623,7 +660,8 @@ function satzText(satz, nurWdh) {
 // Merkt sich einen gemachten Satz für den gewählten Tag
 function speichereSatz(uebungId, nr, kg, wdh) {
   const gym = laden("gym", {});
-  const tag = gym[gewaehlterTag] || { einheit: gymEinheit(gewaehlterTag), saetze: {} };
+  const tag = gym[gewaehlterTag] || { saetze: {} };
+  tag.einheit = gymEinheit(gewaehlterTag); // merkt sich, welche Einheit trainiert wurde
   tag.saetze = tag.saetze || {};
   tag.saetze[uebungId] = tag.saetze[uebungId] || [];
   tag.saetze[uebungId][nr] = { kg: kg, wdh: wdh };
@@ -674,23 +712,54 @@ function zeigeGym() {
   const einheit = gymEinheit(gewaehlterTag);
   const tag = laden("gym", {})[gewaehlterTag] || { saetze: {} };
 
-  // Bearbeiten-Knopf
-  document.getElementById("gym-bearbeiten-knopf").textContent = gymBearbeiten ? "Fertig" : "Plan bearbeiten";
+  // Bearbeiten-Knopf („offen“ = Bearbeiten-Modus an, Aussehen im CSS)
+  const bearbeitenKnopf = document.getElementById("gym-bearbeiten-knopf");
+  bearbeitenKnopf.textContent = gymBearbeiten ? "Fertig" : "Plan bearbeiten";
+  bearbeitenKnopf.classList.toggle("offen", gymBearbeiten);
+
+  zeigeGymEinheiten(plan, einheit);
 
   const liste = document.getElementById("gym-uebungen");
   liste.innerHTML = "";
   const hinweis = document.getElementById("gym-hinweis");
+  hinweis.textContent = "";
 
   if (gymBearbeiten) {
-    hinweis.textContent = "";
     zeigeGymBearbeiten(plan, einheit);
   } else if (plan[einheit].uebungen.length === 0) {
-    hinweis.textContent = "Noch keine Übungen. Tippe auf „Plan bearbeiten“, um welche anzulegen.";
+    hinweis.textContent = "Noch keine Übungen in „" + gymName(plan, einheit) +
+      "“. Tippe auf „Plan bearbeiten“, um welche anzulegen.";
   } else {
-    hinweis.textContent = "";
+    // Bei mehreren Einheiten sagen, was laut Reihenfolge dran ist
+    if (gymSplit() > 1 && !gymTrainiert(gewaehlterTag)) {
+      const vorschlag = gymVorschlag(gewaehlterTag);
+      hinweis.textContent = vorschlag === einheit
+        ? "Laut Reihenfolge ist das heute dran."
+        : "Laut Reihenfolge wäre „" + gymName(plan, vorschlag) + "“ dran.";
+    }
     zeigeGymUebungen(plan, einheit, tag);
   }
   zeigeGymFortschritt();
+}
+
+// Auswahl der Einheit (nur bei Split 2 oder 3): ein Knopf pro Einheit
+function zeigeGymEinheiten(plan, einheit) {
+  const leiste = document.getElementById("gym-einheiten");
+  leiste.innerHTML = "";
+  leiste.classList.toggle("versteckt", gymSplit() === 1);
+
+  for (const e of aktiveEinheiten()) {
+    const knopf = document.createElement("button");
+    knopf.type = "button";
+    knopf.textContent = gymName(plan, e);
+    knopf.classList.toggle("aktiv", e === einheit);
+    knopf.addEventListener("click", function () {
+      gymAnsicht = e;
+      gymEditId = null;
+      zeigeGym();
+    });
+    leiste.append(knopf);
+  }
 }
 
 function zeigeGymUebungen(plan, einheit, tag) {
@@ -740,7 +809,8 @@ function zeigeGymUebungen(plan, einheit, tag) {
 // Merkt sich einen Haken (z. B. Dehnen) für den gewählten Tag
 function speichereHaken(uebungId, wert) {
   const gym = laden("gym", {});
-  const tag = gym[gewaehlterTag] || { einheit: gymEinheit(gewaehlterTag), saetze: {} };
+  const tag = gym[gewaehlterTag] || { saetze: {} };
+  tag.einheit = gymEinheit(gewaehlterTag);
   tag.haken = tag.haken || {};
   if (wert) {
     tag.haken[uebungId] = true;
@@ -887,6 +957,22 @@ function zeigeGymBearbeiten(plan, einheit) {
   const liste = document.getElementById("gym-uebungen");
   const uebungen = plan[einheit].uebungen;
 
+  // Name der Einheit ändern, z. B. „Push“ oder „Beine“ (leer = „Training A“)
+  const nameLabel = document.createElement("label");
+  nameLabel.className = "gym-name-feld";
+  const nameText = document.createElement("span");
+  nameText.textContent = "Name dieser Einheit";
+  const nameFeld = document.createElement("input");
+  nameFeld.value = gymName(plan, einheit);
+  nameFeld.addEventListener("change", function () {
+    const neuerPlan = ladeGymPlan();
+    neuerPlan[einheit].name = nameFeld.value.trim();
+    speichereGymPlan(neuerPlan);
+    zeigeGym();
+  });
+  nameLabel.append(nameText, nameFeld);
+  liste.append(nameLabel);
+
   uebungen.forEach(function (uebung, i) {
     if (gymEditId === uebung.id) {
       liste.append(gymEditForm(einheit, uebung));
@@ -924,8 +1010,8 @@ function zeigeGymBearbeiten(plan, einheit) {
   } else {
     const neuKnopf = document.createElement("button");
     neuKnopf.type = "button";
-    neuKnopf.className = "nebenknopf";
-    neuKnopf.textContent = "+ Übung hinzufügen";
+    neuKnopf.className = "nebenknopf plus-knopf";
+    neuKnopf.textContent = "Übung hinzufügen";
     neuKnopf.addEventListener("click", function () { gymEditId = "neu"; zeigeGym(); });
     liste.append(neuKnopf);
   }
@@ -1218,7 +1304,7 @@ function zeigeGymFortschritt() {
     const uebungen = plan[einheit].uebungen.filter(function (u) { return daten.verlauf[u.id]; });
     if (uebungen.length === 0) continue;
     const titel = document.createElement("h3");
-    titel.textContent = "Übungen";
+    titel.textContent = gymName(plan, einheit);
     inhalt.append(titel);
 
     for (const uebung of uebungen) {
@@ -1593,7 +1679,7 @@ function zeigeHeute() {
 
 // ===== Einstellungen =====
 // Gespeichert unter "einstellungen", z. B.
-//   { reiter: { gym: false }, kaesten: { schlaf: false }, gymProWoche: 3 }
+//   { reiter: { gym: false }, kaesten: { schlaf: false }, gymProWoche: 3, gymSplit: 2 }
 // Was dort nicht steht, ist an (bzw. hat den Standardwert).
 
 // Die Bereiche unten in der Leiste („Heute“ ist immer da)
@@ -1618,7 +1704,12 @@ const KAESTEN = [
 
 function ladeEinstellungen() {
   const e = laden("einstellungen", {});
-  return { reiter: e.reiter || {}, kaesten: e.kaesten || {}, gymProWoche: e.gymProWoche || 2 };
+  return {
+    reiter: e.reiter || {},
+    kaesten: e.kaesten || {},
+    gymProWoche: e.gymProWoche || 2,
+    gymSplit: [1, 2, 3].includes(e.gymSplit) ? e.gymSplit : 1   // 1 = Ganzkörper, 2 = A/B, 3 = A/B/C
+  };
 }
 
 // Ändert eine einzelne Einstellung, z. B. speichereEinstellung("reiter", "gym", false)
@@ -1642,6 +1733,10 @@ function kastenAn(id) {
 
 function gymProWoche() {
   return ladeEinstellungen().gymProWoche;
+}
+
+function gymSplit() {
+  return ladeEinstellungen().gymSplit;
 }
 
 // Blendet die Knöpfe unten in der Leiste passend ein und aus
@@ -1672,6 +1767,31 @@ function zeigeEinstellungen() {
   const e = ladeEinstellungen();
   document.getElementById("einstellungen-name").value = laden("name", "");
   document.getElementById("einstellungen-gym-ziel").value = e.gymProWoche;
+
+  // Split: Ganzkörper, 2er- oder 3er-Split
+  const splitLeiste = document.getElementById("einstellungen-gym-split");
+  splitLeiste.innerHTML = "";
+  const splitNamen = { 1: "Ganzkörper", 2: "2er-Split", 3: "3er-Split" };
+  for (const anzahl of [1, 2, 3]) {
+    const knopf = document.createElement("button");
+    knopf.type = "button";
+    knopf.textContent = splitNamen[anzahl];
+    knopf.classList.toggle("aktiv", anzahl === e.gymSplit);
+    knopf.addEventListener("click", function () {
+      const einst = ladeEinstellungen();
+      einst.gymSplit = anzahl;
+      speichern("einstellungen", einst);
+      gymAnsicht = null;
+      gymEditId = null;
+      zeigeEinstellungen();
+      zeigeGym();
+    });
+    splitLeiste.append(knopf);
+  }
+  document.getElementById("einstellungen-gym-split-hinweis").textContent = e.gymSplit === 1
+    ? "Ein Training, das du immer wiederholst."
+    : "Die Einheiten kommen der Reihe nach dran (" + GYM_EINHEITEN.slice(0, e.gymSplit).join(", ") +
+      ", dann wieder von vorn). Nicht genutzte Einheiten bleiben gespeichert.";
 
   // Bereiche
   const reiterListe = document.getElementById("einstellungen-reiter");

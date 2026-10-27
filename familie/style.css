@@ -130,14 +130,91 @@ textarea {
   font-size: 14px;
 }
 
-/* Textknöpfe wie „Habits bearbeiten“: ohne Fläche, leise */
+/* Funktionsknöpfe wie „Habits bearbeiten“: umrandet, mit Symbol, gut als Knopf erkennbar */
 .nebenknopf {
-  display: block;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
   background: none;
-  padding: 10px 0;
+  border: 1px solid #3d3d3d;
+  padding: 10px 16px;
   margin: 12px 0;
-  color: var(--text-leise);
+  color: var(--text);
   font-size: 15px;
+  font-weight: 500;
+}
+
+/* Das Symbol vor dem Text: ein kleines Bild, das sich in der Textfarbe einfärbt (Maske) */
+.nebenknopf::before {
+  content: "";
+  width: 16px;
+  height: 16px;
+  background: currentColor;
+  -webkit-mask: var(--knopf-symbol) center / contain no-repeat;
+  mask: var(--knopf-symbol) center / contain no-repeat;
+}
+
+/* Stift = bearbeiten, Plus = hinzufügen, Haken = fertig */
+.bearbeiten-knopf {
+  --knopf-symbol: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M4 20h4L19 9l-4-4L4 16z'/%3E%3C/svg%3E");
+}
+
+.plus-knopf {
+  --knopf-symbol: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M12 5v14M5 12h14'/%3E%3C/svg%3E");
+}
+
+/* Solange man bearbeitet („Fertig“): gefüllter heller Knopf mit Haken */
+.nebenknopf.offen {
+  --knopf-symbol: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M5 12.5l4.5 4.5L19 7.5'/%3E%3C/svg%3E");
+  background: var(--text);
+  border-color: var(--text);
+  color: var(--hintergrund);
+}
+
+/* Umschalter mit mehreren Knöpfen (Einheit A/B/C, Split-Wahl): der aktive ist hell hinterlegt */
+.segment {
+  display: flex;
+  gap: 4px;
+  padding: 4px;
+  margin: 12px 0;
+  background: var(--flaeche);
+  border-radius: 14px;
+}
+
+.segment button {
+  flex: 1;
+  min-width: 0;
+  padding: 10px 6px;
+  font-size: 15px;
+  background: none;
+  color: var(--text-leise);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.segment button.aktiv {
+  background: var(--flaeche-hell);
+  color: var(--text);
+  font-weight: 600;
+}
+
+/* Feld „Name dieser Einheit“ im Bearbeiten-Modus */
+.gym-name-feld {
+  display: block;
+  margin: 12px 0 16px;
+}
+
+.gym-name-feld span {
+  display: block;
+  font-size: 13px;
+  color: var(--text-leise);
+  margin-bottom: 4px;
+}
+
+.gym-name-feld input {
+  width: 100%;
+  box-sizing: border-box;
 }
 
 /* Feine Linien-Symbole (SVG). Sie färben sich mit der Textfarbe. */
@@ -710,16 +787,45 @@ nav button.aktiv {
   color: var(--akzent);
 }
 
-/* Aufklapp-Bereich „Affirmationen bearbeiten“ */
+/* Aufklapp-Bereich „Affirmationen bearbeiten“: die Zeile sieht aus wie ein Knopf */
 #affirmationen-bearbeiten {
   margin-top: 24px;
-  border-top: 1px solid var(--rand);
-  padding-top: 14px;
 }
 
 #affirmationen-bearbeiten summary {
-  color: var(--text-leise);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 16px;
+  border: 1px solid #3d3d3d;
+  border-radius: var(--radius);
+  color: var(--text);
   font-size: 15px;
+  font-weight: 500;
+}
+
+#affirmationen-bearbeiten summary::before {
+  content: "";
+  width: 16px;
+  height: 16px;
+  background: currentColor;
+  -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M4 20h4L19 9l-4-4L4 16z'/%3E%3C/svg%3E") center / contain no-repeat;
+  mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M4 20h4L19 9l-4-4L4 16z'/%3E%3C/svg%3E") center / contain no-repeat;
+}
+
+#affirmationen-bearbeiten summary::after {
+  margin-left: auto;             /* Pfeil ganz nach rechts */
+  float: none;
+}
+
+#affirmationen-bearbeiten[open] summary {
+  background: var(--text);
+  border-color: var(--text);
+  color: var(--hintergrund);
+}
+
+#affirmationen-bearbeiten[open] summary::after {
+  border-color: var(--hintergrund);
 }
 
 

@@ -80,7 +80,7 @@
     </div>
 
     <!-- Bearbeiten: Habits hinzufügen, umbenennen, entfernen -->
-    <button id="habits-bearbeiten-knopf" class="nebenknopf">Habits bearbeiten</button>
+    <button id="habits-bearbeiten-knopf" class="nebenknopf bearbeiten-knopf">Habits bearbeiten</button>
     <form id="habit-neu" class="versteckt">
       <input id="habit-neu-name" placeholder="Neues Habit, z. B. Wasser trinken" required>
       <button type="submit">Hinzufügen</button>
@@ -144,13 +144,15 @@
       Du bearbeitest einen früheren Tag. <button class="zu-heute">Zurück zu heute</button>
     </p>
 
+    <!-- Auswahl der Einheit (A/B/C), nur bei Split 2 oder 3 sichtbar. Füllt app.js. -->
+    <div id="gym-einheiten" class="segment versteckt"></div>
     <p id="gym-hinweis" class="hinweis"></p>
 
     <!-- Die Übungen füllt app.js automatisch -->
     <div id="gym-uebungen"></div>
 
     <!-- Plan ändern: verschieben, ändern, entfernen und neue Übungen -->
-    <button id="gym-bearbeiten-knopf" class="nebenknopf">Plan bearbeiten</button>
+    <button id="gym-bearbeiten-knopf" class="nebenknopf bearbeiten-knopf">Plan bearbeiten</button>
 
     <!-- Fortschritt: Plan-Ring, Gesamtkurve und eine kleine Linie pro Übung -->
     <details id="gym-fortschritt" open>
@@ -164,7 +166,7 @@
   <section id="einstellungen">
     <div class="kopfzeile">
       <h2>Einstellungen</h2>
-      <button id="einstellungen-fertig" class="nebenknopf">Fertig</button>
+      <button id="einstellungen-fertig" class="nebenknopf bearbeiten-knopf offen">Fertig</button>
     </div>
 
     <h3>Name</h3>
@@ -186,6 +188,8 @@
     <div id="einstellungen-sport"></div>
 
     <h3>Gym</h3>
+    <div id="einstellungen-gym-split" class="segment"></div>
+    <p id="einstellungen-gym-split-hinweis" class="hinweis"></p>
     <label class="einstellung-zeile">
       <span>Trainings pro Woche (Ziel)</span>
       <input id="einstellungen-gym-ziel" type="number" min="1" max="7" inputmode="numeric">
