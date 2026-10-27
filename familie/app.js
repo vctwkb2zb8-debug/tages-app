@@ -508,7 +508,6 @@ zeigeAffirmationen();
 //                     haken: { dehnen: true } } }
 // Ein Satz zählt als gemacht, sobald er gespeichert ist (✓ getippt oder ein Wert geändert).
 
-const GYM_PRO_WOCHE = 2;             // Ziel für den Wochen-Ring
 const GYM_SAETZE = 2;
 const GYM_WDH_MIN = 6;               // darunter: Gewicht reduzieren
 const GYM_WDH_ZIEL = 10;             // 2× so viele: Gewicht erhöhen
@@ -1148,7 +1147,8 @@ function zeigeGymFortschritt() {
   const plan = ladeGymPlan();
   const daten = gymFortschrittDaten();
 
-  // 1. Ring für die aktuelle Woche (Mo–So): x von GYM_PRO_WOCHE Einheiten
+  // 1. Ring für die aktuelle Woche (Mo–So): x von <Ziel aus den Einstellungen> Einheiten
+  const ziel = gymProWoche();
   const wochenStart = montagVon(heute());
   const wochenEnde = verschiebeTag(wochenStart, 6);
   const absolviert = Object.keys(gym).filter(function (d) {
@@ -1163,13 +1163,13 @@ function zeigeGymFortschritt() {
   const zeitraum = document.createElement("span");
   zeitraum.textContent = punktDatum(wochenStart) + " – " + punktDatum(wochenEnde);
   const zaehler = document.createElement("span");
-  zaehler.textContent = absolviert + " von " + GYM_PRO_WOCHE + " Einheiten";
+  zaehler.textContent = absolviert + " von " + ziel + " Einheiten";
   // Alle Einheiten seit Beginn, ohne Begrenzung
   const gesamt = Object.keys(gym).filter(gymTrainiert).length;
   const gesamtZeile = document.createElement("span");
   gesamtZeile.textContent = "Insgesamt: " + gesamt + (gesamt === 1 ? " Einheit" : " Einheiten");
   ringText.append(wocheText, zeitraum, zaehler, gesamtZeile);
-  ringZeile.append(gymRing(absolviert, GYM_PRO_WOCHE), ringText);
+  ringZeile.append(gymRing(absolviert, ziel), ringText);
   inhalt.append(ringZeile);
 
   if (daten.punkte.length === 0) {
@@ -1460,6 +1460,36 @@ document.getElementById("name-form").addEventListener("submit", function (ereign
   zeigeBegruessung();
 });
 
+// Kasten „Habits“: grün, sobald die Mindest-Habits erfüllt sind. Sind keine als
+// „Mindest“ markiert, müssen alle Habits abgehakt sein.
+function habitsKasten(tagHabits) {
+  const habits = ladeHabits();
+  if (habits.length === 0) {
+    return heuteKasten("Habits", "Noch keine Habits angelegt", [], "habits", false);
+  }
+
+  const happy = laden("happy", {})[heute()];
+  const happyText = happy === undefined ? "" : " · Happy: " + deutscheZahl(happy);
+  const markiert = ladeMindestHabits();
+  const mindest = markiert.length > 0
+    ? habits.filter(function (h) { return markiert.includes(h.id); })
+    : habits;
+  const mindestOffen = mindest.filter(function (h) { return tagHabits[h.id] !== "x"; });
+  const gesamtErledigt = habits.filter(function (h) { return tagHabits[h.id] === "x"; }).length;
+  const text = markiert.length > 0
+    ? "Mindestens " + (mindest.length - mindestOffen.length) + " von " + mindest.length +
+      " · gesamt " + gesamtErledigt + " von " + habits.length
+    : gesamtErledigt + " von " + habits.length + " erledigt";
+
+  return heuteKasten(
+    "Habits",
+    text + happyText,
+    mindestOffen.map(function (h) { return tagHabits[h.id] === "/" ? h.name + " (½)" : h.name; }),
+    "habits",
+    mindestOffen.length === 0
+  );
+}
+
 function zeigeHeute() {
   zeigeBegruessung();
   document.getElementById("heute-datum").textContent = langesDatum(heute());
@@ -1467,78 +1497,282 @@ function zeigeHeute() {
   kaesten.innerHTML = "";
   const tagHabits = habitTag(heute());
 
+  // Jeder Kasten erscheint nur, wenn er in den Einstellungen an ist (kastenAn).
+
   // 1. Affirmationen: heute schon gelesen?
   const gelesen = tagHabits["affirmationen"] === "x";
-  kaesten.append(heuteKasten(
-    "Affirmationen",
-    gelesen ? "Heute gelesen" : "Noch nicht gelesen",
-    [],
-    "affirmationen",
-    gelesen
-  ));
-
-  // 2. Habits: grün, sobald die Mindest-Habits erfüllt sind. Sind keine als „Mindest“
-  //    markiert, müssen alle Habits abgehakt sein.
-  const habits = ladeHabits();
-  const happy = laden("happy", {})[heute()];
-  const happyText = happy === undefined ? "" : " · Happy: " + deutscheZahl(happy);
-  if (habits.length === 0) {
-    kaesten.append(heuteKasten("Habits", "Noch keine Habits angelegt", [], "habits", false));
-  } else {
-    const markiert = ladeMindestHabits();
-    const mindest = markiert.length > 0
-      ? habits.filter(function (h) { return markiert.includes(h.id); })
-      : habits;
-    const mindestOffen = mindest.filter(function (h) { return tagHabits[h.id] !== "x"; });
-    const gesamtErledigt = habits.filter(function (h) { return tagHabits[h.id] === "x"; }).length;
-    const text = markiert.length > 0
-      ? "Mindestens " + (mindest.length - mindestOffen.length) + " von " + mindest.length +
-        " · gesamt " + gesamtErledigt + " von " + habits.length
-      : gesamtErledigt + " von " + habits.length + " erledigt";
+  if (kastenAn("affirmationen")) {
     kaesten.append(heuteKasten(
-      "Habits",
-      text + happyText,
-      mindestOffen.map(function (h) { return tagHabits[h.id] === "/" ? h.name + " (½)" : h.name; }),
-      "habits",
-      mindestOffen.length === 0
+      "Affirmationen",
+      gelesen ? "Heute gelesen" : "Noch nicht gelesen",
+      [],
+      "affirmationen",
+      gelesen
     ));
   }
 
+  // 2. Habits
+  if (kastenAn("habits")) kaesten.append(habitsKasten(tagHabits));
+
   // 2b. Gym: nur wenn heute schon trainiert wurde
-  if (gymTrainiert(heute())) {
+  if (kastenAn("training") && gymTrainiert(heute())) {
     kaesten.append(heuteKasten("Training", "Heute eingetragen", [], "gym", true));
   }
 
   // 3. Tagebuch: grün, sobald bei „geleistet“ mindestens 2 Einträge stehen (Dankbar = Zusatz)
-  const tag = laden("tagebuch", {})[heute()] || leererTagebuchTag();
-  const gefuellt = function (liste) {
-    return (liste || []).filter(function (z) { return z.trim() !== ""; }).length;
-  };
-  const anzahlDankbar = gefuellt(tag.dankbar);
-  const anzahlFuerMich = gefuellt(tag.fuerMich);
-  kaesten.append(heuteKasten(
-    "Tagebuch",
-    "Geleistet: " + anzahlFuerMich + " (Ziel: mind. " + TAGEBUCH_MIN_GELEISTET + ") · Dankbar: " + anzahlDankbar,
-    [],
-    "tagebuch",
-    anzahlFuerMich >= TAGEBUCH_MIN_GELEISTET
-  ));
+  if (kastenAn("tagebuch")) {
+    const tag = laden("tagebuch", {})[heute()] || leererTagebuchTag();
+    const gefuellt = function (liste) {
+      return (liste || []).filter(function (z) { return z.trim() !== ""; }).length;
+    };
+    const anzahlDankbar = gefuellt(tag.dankbar);
+    const anzahlFuerMich = gefuellt(tag.fuerMich);
+    kaesten.append(heuteKasten(
+      "Tagebuch",
+      "Geleistet: " + anzahlFuerMich + " (Ziel: mind. " + TAGEBUCH_MIN_GELEISTET + ") · Dankbar: " + anzahlDankbar,
+      [],
+      "tagebuch",
+      anzahlFuerMich >= TAGEBUCH_MIN_GELEISTET
+    ));
+  }
 
   // 4. Sport diese Woche (nur, wenn Ziele eingestellt sind)
-  const sport = sportKasten();
+  const sport = kastenAn("sport") ? sportKasten() : null;
   if (sport) kaesten.append(sport);
 
   // 5. Schlafenszeit (ab 17 Uhr)
-  const schlaf = schlafKasten();
+  const schlaf = kastenAn("schlaf") ? schlafKasten() : null;
   if (schlaf) kaesten.append(schlaf);
 
+  // Alles ausgeblendet? Dann ein kurzer Hinweis statt einer leeren Seite
+  if (kaesten.children.length === 0) {
+    const leer = document.createElement("p");
+    leer.className = "hinweis";
+    leer.textContent = "Hier ist gerade nichts eingeblendet. Über das Zahnrad oben kannst du Kästen einschalten.";
+    kaesten.append(leer);
+  }
+
   // 6. Wochenrückblick: immer die aktuelle Woche; sonntags automatisch aufgeklappt
+  document.getElementById("wochenrueckblick").classList.toggle("versteckt", !kastenAn("wochenrueckblick"));
   rueckblickMontag = montagVon(heute());
   if (wochentag(heute()) === 6) {
     document.getElementById("wochenrueckblick").open = true;
   }
   zeigeWochenrueckblick();
 }
+
+
+// ===== Einstellungen =====
+// Gespeichert unter "einstellungen", z. B.
+//   { reiter: { gym: false }, kaesten: { schlaf: false }, gymProWoche: 3 }
+// Was dort nicht steht, ist an (bzw. hat den Standardwert).
+
+// Die Bereiche unten in der Leiste („Heute“ ist immer da)
+const REITER = [
+  { id: "habits", name: "Habits" },
+  { id: "tagebuch", name: "Tagebuch" },
+  { id: "affirmationen", name: "Affirmationen" },
+  { id: "gym", name: "Gym" }
+];
+
+// Die Kästen auf der Startseite. „reiter“: gehört zu diesem Bereich – ist der aus,
+// verschwindet auch der Kasten (er würde sonst ins Leere führen).
+const KAESTEN = [
+  { id: "affirmationen", name: "Affirmationen", reiter: "affirmationen" },
+  { id: "habits", name: "Habits", reiter: "habits" },
+  { id: "training", name: "Training", reiter: "gym" },
+  { id: "tagebuch", name: "Tagebuch", reiter: "tagebuch" },
+  { id: "sport", name: "Sport diese Woche", reiter: "habits" },
+  { id: "schlaf", name: "Schlafenszeit (ab 17 Uhr)", reiter: null },
+  { id: "wochenrueckblick", name: "Wochenrückblick", reiter: null }
+];
+
+function ladeEinstellungen() {
+  const e = laden("einstellungen", {});
+  return { reiter: e.reiter || {}, kaesten: e.kaesten || {}, gymProWoche: e.gymProWoche || 2 };
+}
+
+// Ändert eine einzelne Einstellung, z. B. speichereEinstellung("reiter", "gym", false)
+function speichereEinstellung(gruppe, id, wert) {
+  const e = ladeEinstellungen();
+  e[gruppe][id] = wert;
+  speichern("einstellungen", e);
+}
+
+// Ist ein Bereich eingeschaltet?
+function reiterAn(id) {
+  return ladeEinstellungen().reiter[id] !== false;
+}
+
+// Wird ein Kasten auf der Startseite gezeigt? (eigener Schalter und sein Bereich an)
+function kastenAn(id) {
+  const kasten = KAESTEN.find(function (k) { return k.id === id; });
+  if (ladeEinstellungen().kaesten[id] === false) return false;
+  return !kasten.reiter || reiterAn(kasten.reiter);
+}
+
+function gymProWoche() {
+  return ladeEinstellungen().gymProWoche;
+}
+
+// Blendet die Knöpfe unten in der Leiste passend ein und aus
+function wendeReiterAn() {
+  for (const knopf of document.querySelectorAll("nav button")) {
+    const bereich = knopf.dataset.bereich;
+    knopf.classList.toggle("versteckt", bereich !== "heute" && !reiterAn(bereich));
+  }
+}
+
+// Baut eine Zeile mit Text und Schalter (Checkbox)
+function schalterZeile(text, an, gesperrt, beiAenderung) {
+  const zeile = document.createElement("label");
+  zeile.className = "einstellung-zeile" + (gesperrt ? " gesperrt" : "");
+  const beschriftung = document.createElement("span");
+  beschriftung.textContent = text;
+  const schalter = document.createElement("input");
+  schalter.type = "checkbox";
+  schalter.className = "schalter";
+  schalter.checked = an;
+  schalter.disabled = gesperrt;
+  schalter.addEventListener("change", function () { beiAenderung(schalter.checked); });
+  zeile.append(beschriftung, schalter);
+  return zeile;
+}
+
+function zeigeEinstellungen() {
+  const e = ladeEinstellungen();
+  document.getElementById("einstellungen-name").value = laden("name", "");
+  document.getElementById("einstellungen-gym-ziel").value = e.gymProWoche;
+
+  // Bereiche
+  const reiterListe = document.getElementById("einstellungen-reiter");
+  reiterListe.innerHTML = "";
+  for (const reiter of REITER) {
+    reiterListe.append(schalterZeile(reiter.name, reiterAn(reiter.id), false, function (an) {
+      speichereEinstellung("reiter", reiter.id, an);
+      wendeReiterAn();
+      zeigeEinstellungen(); // Kästen des Bereichs sperren bzw. freigeben
+    }));
+  }
+
+  // Kästen der Startseite (gesperrt, wenn ihr Bereich aus ist)
+  const kaestenListe = document.getElementById("einstellungen-kaesten");
+  kaestenListe.innerHTML = "";
+  for (const kasten of KAESTEN) {
+    const bereichAus = kasten.reiter && !reiterAn(kasten.reiter);
+    const text = kasten.name + (bereichAus ? " (Bereich ist aus)" : "");
+    kaestenListe.append(schalterZeile(text, e.kaesten[kasten.id] !== false, bereichAus, function (an) {
+      speichereEinstellung("kaesten", kasten.id, an);
+    }));
+  }
+
+  zeigeSportEinstellungen();
+}
+
+// Sport-Ziele: vorhandene Ziele mit Anzahl und ✕, darunter „Ziel hinzufügen“
+function zeigeSportEinstellungen() {
+  const bereich = document.getElementById("einstellungen-sport");
+  bereich.innerHTML = "";
+  const habits = ladeHabits();
+  const ziele = ladeSportZiele();
+
+  if (habits.length === 0) {
+    const hinweis = document.createElement("p");
+    hinweis.className = "hinweis";
+    hinweis.textContent = "Lege zuerst unter Habits eins an, z. B. „Spazieren“.";
+    bereich.append(hinweis);
+    return;
+  }
+
+  for (const ziel of ziele) {
+    const zeile = document.createElement("div");
+    zeile.className = "einstellung-zeile";
+    const name = document.createElement("span");
+    name.textContent = ziel.name;
+    const anzahl = document.createElement("input");
+    anzahl.type = "number";
+    anzahl.min = 1;
+    anzahl.max = 7;
+    anzahl.inputMode = "numeric";
+    anzahl.value = ziel.soll;
+    anzahl.title = "Wie oft pro Woche";
+    anzahl.addEventListener("change", function () {
+      const soll = Math.min(7, Math.max(1, Math.round(Number(anzahl.value) || 1)));
+      anzahl.value = soll;
+      aendereSportZiel(ziel.id, soll);
+    });
+    const proWoche = document.createElement("span");
+    proWoche.className = "hinweis";
+    proWoche.textContent = "× pro Woche";
+    const entfernen = document.createElement("button");
+    entfernen.type = "button";
+    entfernen.textContent = "✕";
+    entfernen.title = "Ziel entfernen";
+    entfernen.addEventListener("click", function () {
+      aendereSportZiel(ziel.id, null);
+      zeigeSportEinstellungen();
+    });
+    zeile.append(name, anzahl, proWoche, entfernen);
+    bereich.append(zeile);
+  }
+
+  // Habits, die noch kein Ziel haben, stehen zur Auswahl
+  const frei = habits.filter(function (h) {
+    return !ziele.some(function (z) { return z.id === h.id; });
+  });
+  if (frei.length === 0) return;
+
+  const form = document.createElement("form");
+  form.className = "einstellung-zeile";
+  const auswahl = document.createElement("select");
+  for (const habit of frei) {
+    const option = document.createElement("option");
+    option.value = habit.id;
+    option.textContent = habit.name;
+    auswahl.append(option);
+  }
+  const hinzufuegen = document.createElement("button");
+  hinzufuegen.type = "submit";
+  hinzufuegen.textContent = "Ziel hinzufügen";
+  form.append(auswahl, hinzufuegen);
+  form.addEventListener("submit", function (ereignis) {
+    ereignis.preventDefault();
+    aendereSportZiel(auswahl.value, 2); // startet mit 2× pro Woche
+    zeigeSportEinstellungen();
+  });
+  bereich.append(form);
+}
+
+// Setzt das Wochenziel eines Habits; soll = null entfernt das Ziel
+function aendereSportZiel(id, soll) {
+  const ziele = laden("sport-ziele", []).filter(function (z) { return z.id !== id; });
+  if (soll !== null) ziele.push({ id: id, soll: soll });
+  // Reihenfolge wie in der Habit-Liste
+  const reihenfolge = ladeHabits().map(function (h) { return h.id; });
+  ziele.sort(function (a, b) { return reihenfolge.indexOf(a.id) - reihenfolge.indexOf(b.id); });
+  speichern("sport-ziele", ziele);
+}
+
+document.getElementById("einstellungen-name").addEventListener("change", function () {
+  speichern("name", this.value.trim());
+  zeigeBegruessung();
+});
+
+document.getElementById("einstellungen-gym-ziel").addEventListener("change", function () {
+  const ziel = Math.min(7, Math.max(1, Math.round(Number(this.value) || 2)));
+  this.value = ziel;
+  const e = ladeEinstellungen();
+  e.gymProWoche = ziel;
+  speichern("einstellungen", e);
+  zeigeGymFortschritt();
+});
+
+document.getElementById("einstellungen-knopf").addEventListener("click", function () {
+  zeigeBereich("einstellungen");
+});
+document.getElementById("einstellungen-fertig").addEventListener("click", function () {
+  zeigeBereich("heute");
+});
 
 
 // ===== Navigation =====
@@ -1564,6 +1798,9 @@ function zeigeBereich(name) {
   if (name === "heute") {
     zeigeHeute();
   }
+  if (name === "einstellungen") {
+    zeigeEinstellungen();
+  }
   window.scrollTo(0, 0);
 }
 
@@ -1586,7 +1823,9 @@ for (const knopf of knoepfe) {
   });
 }
 
-// Beim Start: Datumsleisten auf heute stellen und die Tagesansicht zeigen
+// Beim Start: ausgeschaltete Bereiche ausblenden, Datumsleisten auf heute stellen
+// und die Tagesansicht zeigen
+wendeReiterAn();
 waehleTag(heute());
 zeigeBereich("heute");
 

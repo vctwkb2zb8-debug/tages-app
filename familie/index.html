@@ -22,7 +22,13 @@
   <h1 id="begruessung">Mein Tag</h1>
 
   <section id="heute">
-    <h2>Heute</h2>
+    <!-- Überschrift mit Zahnrad rechts daneben: öffnet die Einstellungen -->
+    <div class="kopfzeile">
+      <h2>Heute</h2>
+      <button id="einstellungen-knopf" class="symbolknopf" title="Einstellungen" aria-label="Einstellungen">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg>
+      </button>
+    </div>
     <p id="heute-datum"></p>
 
     <!-- Erster Start: Namen eintragen (verschwindet danach) -->
@@ -151,6 +157,39 @@
       <summary>📈 Fortschritt</summary>
       <div id="gym-fortschritt-inhalt"></div>
     </details>
+  </section>
+
+  <!-- Einstellungen: erreichbar über das Zahnrad in „Heute“ (kein eigener Knopf unten).
+       Die Listen mit Schaltern füllt app.js. Alles wird nur auf diesem Gerät gespeichert. -->
+  <section id="einstellungen">
+    <div class="kopfzeile">
+      <h2>Einstellungen</h2>
+      <button id="einstellungen-fertig" class="nebenknopf">Fertig</button>
+    </div>
+
+    <h3>Name</h3>
+    <input id="einstellungen-name" placeholder="Dein Name" autocomplete="given-name">
+
+    <h3>Bereiche</h3>
+    <p class="hinweis">Welche Bereiche unten in der Leiste erscheinen.</p>
+    <div id="einstellungen-reiter" class="schalter-liste"></div>
+
+    <h3>Startseite</h3>
+    <p class="hinweis">Was „Heute“ anzeigt.</p>
+    <div id="einstellungen-kaesten" class="schalter-liste"></div>
+
+    <h3>Sport</h3>
+    <p class="hinweis">
+      Wochenziele aus deinen Habits, z. B. „Spazieren 3× pro Woche“.
+      Gezählt werden nur volle Häkchen (✓).
+    </p>
+    <div id="einstellungen-sport"></div>
+
+    <h3>Gym</h3>
+    <label class="einstellung-zeile">
+      <span>Trainings pro Woche (Ziel)</span>
+      <input id="einstellungen-gym-ziel" type="number" min="1" max="7" inputmode="numeric">
+    </label>
   </section>
 
   <!-- Die Symbole sind kleine selbst gezeichnete SVG-Bilder (Linien statt Fotos),

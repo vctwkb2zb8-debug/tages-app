@@ -872,6 +872,84 @@ textarea {
 }
 
 
+/* ===== Einstellungen ===== */
+
+/* Überschrift links, Knopf (Zahnrad oder „Fertig“) rechts */
+.kopfzeile {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.kopfzeile h2 {
+  margin: 0;
+}
+
+.kopfzeile .nebenknopf {
+  margin: 0;
+}
+
+/* Knopf nur mit Symbol, z. B. das Zahnrad */
+.symbolknopf {
+  border: none;
+  background: none;
+  padding: 8px;
+  color: var(--text-leise);
+}
+
+.symbolknopf svg {
+  width: 24px;
+  height: 24px;
+  display: block;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.8;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+/* Eine Zeile: Text links, Schalter oder Eingabe rechts */
+.einstellung-zeile {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--rand);
+}
+
+.einstellung-zeile > span:first-child {
+  flex: 1;                       /* der Text nimmt den freien Platz */
+}
+
+.einstellung-zeile.gesperrt {
+  color: var(--text-leise);
+}
+
+.einstellung-zeile input[type="number"] {
+  width: 4em;
+  font-size: 16px;
+}
+
+.einstellung-zeile select {
+  flex: 1;
+  font-size: 16px;
+}
+
+#einstellungen-name {
+  width: 100%;
+  box-sizing: border-box;
+  font-size: 16px;
+}
+
+/* Schalter: etwas größer, damit man ihn gut trifft */
+.schalter {
+  width: 22px;
+  height: 22px;
+  accent-color: var(--akzent);
+}
+
+
 /* ===== Hilfsklasse ===== */
 /* Wer diese Klasse hat, wird nicht angezeigt (für die Tab-Navigation) */
 .versteckt {
