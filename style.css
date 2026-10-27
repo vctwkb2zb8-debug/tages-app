@@ -36,6 +36,12 @@
 
 
 /* ===== Grundlayout ===== */
+/* Kein Doppeltipp-Zoom, keine automatische Textvergrößerung beim Drehen des Handys */
+html {
+  touch-action: manipulation;
+  -webkit-text-size-adjust: 100%;
+}
+
 body {
   font-family: system-ui, sans-serif;
   background: var(--hintergrund);
@@ -171,7 +177,7 @@ textarea {
   width: 100%;
   box-sizing: border-box;
   font: inherit;
-  font-size: 15px;
+  font-size: 16px;               /* unter 16 px zoomt das iPhone beim Antippen von selbst hinein */
   color: var(--text);
   background: var(--karte);
   border: 1px solid var(--rand);
