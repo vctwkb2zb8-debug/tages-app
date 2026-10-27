@@ -7,7 +7,7 @@
 // kümmert sich nur um die Programm-Dateien.
 
 // Name des Lagers. Bei neuen Dateien die Nummer erhöhen, dann räumt er das alte weg.
-const LAGER = "tages-app-v8";
+const LAGER = "tages-app-v9";
 
 // Diese Dateien braucht die App, um offline zu laufen
 const DATEIEN = [

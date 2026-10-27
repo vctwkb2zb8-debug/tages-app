@@ -15,7 +15,8 @@
   <link rel="apple-touch-icon" href="apple-touch-icon.png">
   <link rel="icon" href="icon-192.png">
   <!-- Farbe der Statusleiste oben auf dem Handy -->
-  <meta name="theme-color" content="#000000">
+  <meta name="theme-color" content="#000000" media="(prefers-color-scheme: dark)">
+  <meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)">
 </head>
 <body>
   <h1>Hi Lars, deine Tages-App :)</h1>
@@ -30,7 +31,7 @@
     <p id="heute-datum"></p>
 
     <!-- App-Code aus der Morgen-/Abend-Mail übernehmen (bleibt nur auf diesem Gerät) -->
-    <button id="mailcode-knopf" class="nebenknopf">Aus Mail einfügen</button>
+    <button id="mailcode-knopf" class="nebenknopf plus-knopf">Aus Mail einfügen</button>
     <p id="mailcode-meldung" class="hinweis"></p>
     <div id="mailcode-feld" class="versteckt">
       <p class="hinweis">Kopiere den App-Code aus der Mail (beginnt mit TAGESAPP1.) und füge ihn hier ein:</p>
@@ -204,24 +205,36 @@
       <button id="einstellungen-fertig" class="nebenknopf bearbeiten-knopf offen">Fertig</button>
     </div>
 
-    <h3>Split</h3>
-    <div id="einstellungen-gym-split" class="segment"></div>
-    <p id="einstellungen-gym-split-hinweis" class="hinweis"></p>
+    <h3>Bereiche</h3>
+    <p class="hinweis">Welche Bereiche unten in der Leiste erscheinen.</p>
+    <div id="einstellungen-reiter" class="schalter-liste"></div>
 
-    <h3>Training</h3>
-    <label class="einstellung-zeile">
-      <span>Trainings pro Woche (Ziel)</span>
-      <input id="einstellungen-gym-ziel" type="number" min="1" max="7" inputmode="numeric">
-    </label>
-    <label class="einstellung-zeile">
-      <span>Sätze pro Übung</span>
-      <input id="einstellungen-gym-saetze" type="number" min="1" max="6" inputmode="numeric">
-    </label>
-    <label class="einstellung-zeile">
-      <span>Pause nach jedem Satz (Sek.)</span>
-      <input id="einstellungen-gym-pause" type="number" min="0" max="600" step="15" inputmode="numeric">
-    </label>
-    <p class="hinweis">0 = kein Pausen-Timer.</p>
+    <h3>Startseite</h3>
+    <p class="hinweis">Was „Heute“ anzeigt.</p>
+    <div id="einstellungen-kaesten" class="schalter-liste"></div>
+
+    <!-- Untermenü: Gym-Einstellungen bleiben beisammen und klappen auf -->
+    <details id="einstellungen-gym-menue">
+      <summary>Gym</summary>
+      <h3>Split</h3>
+      <div id="einstellungen-gym-split" class="segment"></div>
+      <p id="einstellungen-gym-split-hinweis" class="hinweis"></p>
+
+      <h3>Training</h3>
+      <label class="einstellung-zeile">
+        <span>Trainings pro Woche (Ziel)</span>
+        <input id="einstellungen-gym-ziel" type="number" min="1" max="7" inputmode="numeric">
+      </label>
+      <label class="einstellung-zeile">
+        <span>Sätze pro Übung</span>
+        <input id="einstellungen-gym-saetze" type="number" min="1" max="6" inputmode="numeric">
+      </label>
+      <label class="einstellung-zeile">
+        <span>Pause nach jedem Satz (Sek.)</span>
+        <input id="einstellungen-gym-pause" type="number" min="0" max="600" step="15" inputmode="numeric">
+      </label>
+      <p class="hinweis">0 = kein Pausen-Timer.</p>
+    </details>
   </section>
 
   <!-- Die Symbole sind kleine selbst gezeichnete SVG-Bilder (Linien statt Fotos),

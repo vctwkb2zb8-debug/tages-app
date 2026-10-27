@@ -13,8 +13,29 @@
   --akzent: #d8c8a2;          /* der einzige Farbton: erledigt, aktiv, Fortschritt */
   --akzent-text: #0a0a0a;     /* Schrift auf dem Akzent */
   --warnung: #e08a7a;
+  --rand-stark: #3d3d3d;      /* Rand von Knöpfen */
+  --leiste: rgba(14, 14, 14, 0.94);   /* untere Leiste und Pausen-Timer */
   --radius: 12px;
-  color-scheme: dark;         /* Datumsauswahl & Tastatur ebenfalls dunkel */
+  color-scheme: dark;         /* Datumsauswahl & Tastatur passend zum Modus */
+}
+
+/* Heller Modus (Handy auf „hell“): gleiche Namen, andere Farben – schwarz auf weiß */
+@media (prefers-color-scheme: light) {
+  :root {
+    --hintergrund: #ffffff;
+    --flaeche: #f3f3f2;
+    --flaeche-hell: #e8e8e6;
+    --rand: #e2e2e0;
+    --text: #111111;
+    --text-leise: #6a6a68;
+    --text-blass: #a3a3a0;
+    --akzent: #111111;        /* im hellen Modus: schwarz statt beige */
+    --akzent-text: #ffffff;
+    --warnung: #c4472f;
+    --rand-stark: #c9c9c6;
+    --leiste: rgba(255, 255, 255, 0.94);
+    color-scheme: light;
+  }
 }
 
 
@@ -136,7 +157,7 @@ textarea {
   align-items: center;
   gap: 8px;
   background: none;
-  border: 1px solid #3d3d3d;
+  border: 1px solid var(--rand-stark);
   padding: 10px 16px;
   margin: 12px 0;
   color: var(--text);
@@ -266,7 +287,7 @@ nav {
   display: flex;
   justify-content: center;
   padding-bottom: env(safe-area-inset-bottom);
-  background: rgba(10, 10, 10, 0.92);
+  background: var(--leiste);
   backdrop-filter: blur(16px);   /* Inhalt darunter verschwimmt leicht */
   -webkit-backdrop-filter: blur(16px);
   border-top: 1px solid var(--rand);
@@ -802,7 +823,7 @@ nav button.aktiv {
   align-items: center;
   gap: 8px;
   padding: 10px 16px;
-  border: 1px solid #3d3d3d;
+  border: 1px solid var(--rand-stark);
   border-radius: var(--radius);
   color: var(--text);
   font-size: 15px;
@@ -1268,7 +1289,7 @@ nav button.aktiv {
   justify-content: space-between;
   gap: 12px;
   padding: 12px 20px;
-  background: rgba(20, 20, 20, 0.95);
+  background: var(--leiste);
   backdrop-filter: blur(16px);
   -webkit-backdrop-filter: blur(16px);
   border-top: 1px solid var(--rand);
@@ -1289,6 +1310,49 @@ nav button.aktiv {
 #pause.vorbei button {
   background: rgba(0, 0, 0, 0.15);
   color: var(--akzent-text);
+}
+
+
+/* ===== Startseite: Kästen wie früher, mit Emojis ===== */
+.heute-kasten {
+  display: block;
+  background: var(--flaeche);
+  border: 1px solid var(--rand);
+  border-radius: var(--radius);
+  padding: 14px 16px;
+  margin-bottom: 10px;
+}
+
+.heute-kasten strong {
+  display: block;
+}
+
+.heute-kasten .status {
+  display: none;
+}
+
+/* Erledigt: Rand und leichte Tönung im Akzent */
+.heute-kasten.fertig {
+  border-color: var(--akzent);
+  background: color-mix(in srgb, var(--akzent) 12%, var(--flaeche));
+}
+
+
+/* ===== Einstellungen: Untermenü „Gym“ ===== */
+#einstellungen-gym-menue {
+  margin-top: 20px;
+  border-top: 1px solid var(--rand);
+  padding-top: 14px;
+}
+
+#einstellungen-gym-menue > summary {
+  font-size: 17px;
+  font-weight: 500;
+  cursor: pointer;
+}
+
+#einstellungen-gym-menue h3 {
+  margin-top: 18px;
 }
 
 
@@ -1327,4 +1391,11 @@ nav button.aktiv {
 
 #mailcode-feld {
   margin-top: 10px;
+}
+
+
+/* Symbole für Knöpfe ohne eigene Klasse: „Prüfen“ = Haken, „Aus Mail einfügen“ = Plus */
+#import-pruefen,
+#gym-import-pruefen {
+  --knopf-symbol: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M5 12.5l4.5 4.5L19 7.5'/%3E%3C/svg%3E");
 }

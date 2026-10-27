@@ -25,7 +25,7 @@ Die App selbst holt nichts aus dem Netz: Gmail, Kalender, Wetter und Strava lies
 
 Die ToDos wurden am 16.10.2026 auf Lars' Wunsch entfernt (alte ToDo-Daten bleiben im Speicher unter `todos`, werden aber nicht mehr angezeigt).
 
-**Design (seit 27.10.2026):** immer dunkel (fast schwarz, beiger Akzent `#d8c8a2`), Linien-Symbole statt Emojis (`symbol("haken")` usw.), Status-Kreis in den Kästen der Startseite. Übernommen aus „Mein Tag“ (`familie/`) und der Gym-App (`gym-app/`); beide bleiben eigene Apps, die Tages-App behält alle eigenen Funktionen (Mail-Code, Morgenroutine, Sportziele, Schlafenszeit, Wochenrückblick, Import).
+**Design (seit 27.10.2026):** folgt dem Modus des Handys – dunkel (fast schwarz, beiger Akzent `#d8c8a2`) oder hell (weiß, schwarzer Akzent), Farben als Variablen in `:root` und `@media (prefers-color-scheme: light)`. Linien-Symbole statt Emojis in der App; nur die Kästen auf „Heute“ haben wieder Emojis (✅ ⏳ 😴 📬 🌙, Wunsch von Lars). Icon wie „Mein Tag“. **Einstellungen** (Zahnrad auf „Heute“): Bereiche der unteren Leiste ein/aus (`REITER`), Kästen der Startseite ein/aus (`KAESTEN`, gesperrt wenn ihr Bereich aus ist), Untermenü „Gym“ (Split, Ziel, Sätze, Pause); Schlüssel `einstellungen`. Übernommen aus „Mein Tag“ (`familie/`) und der Gym-App (`gym-app/`); beide bleiben eigene Apps, die Tages-App behält alle eigenen Funktionen (Mail-Code, Morgenroutine, Sportziele, Schlafenszeit, Wochenrückblick, Import).
 
 Speicher-Schlüssel: `checkliste-punkte` (Liste der Habits, alter Name bewusst behalten), `habits-tage`, `happy`, `tagebuch`, `affirmationen-text`, `gym-plan`, `gym`, `einstellungen`, `wecker`, `mail-daten`.
 

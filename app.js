@@ -1820,14 +1820,81 @@ document.getElementById("gym-verlauf").addEventListener("toggle", function () {
 // Gespeichert unter "einstellungen", z. B. { gymProWoche: 3, gymSplit: 2, gymSaetze: 3 }
 // Was dort nicht steht, hat den Standardwert.
 
+// Die Bereiche unten in der Leiste („Heute“ ist immer da)
+const REITER = [
+  { id: "habits", name: "Habits" },
+  { id: "tagebuch", name: "Tagebuch" },
+  { id: "affirmationen", name: "Affirmationen" },
+  { id: "gym", name: "Gym" }
+];
+
+// Die Kästen auf der Startseite. „reiter“: gehört zu diesem Bereich – ist der aus,
+// verschwindet auch der Kasten (er würde sonst ins Leere führen).
+const KAESTEN = [
+  { id: "mail", name: "Aus der Mail (Termine, Wetter)", reiter: null },
+  { id: "routine", name: "Morgenroutine-Challenge", reiter: "habits" },
+  { id: "affirmationen", name: "Affirmationen", reiter: "affirmationen" },
+  { id: "habits", name: "Habits", reiter: "habits" },
+  { id: "training", name: "Training", reiter: "gym" },
+  { id: "tagebuch", name: "Tagebuch", reiter: "tagebuch" },
+  { id: "sport", name: "Sport diese Woche", reiter: "habits" },
+  { id: "schlaf", name: "Schlafenszeit (ab 17 Uhr)", reiter: null },
+  { id: "wochenrueckblick", name: "Wochenrückblick", reiter: null }
+];
+
 function ladeEinstellungen() {
   const e = laden("einstellungen", {});
   return {
+    reiter: e.reiter || {},
+    kaesten: e.kaesten || {},
     gymProWoche: e.gymProWoche || 3,
     gymSplit: [1, 2, 3].includes(e.gymSplit) ? e.gymSplit : 2,  // 1 = Ganzkörper, 2 = A/B, 3 = A/B/C
     gymSaetze: e.gymSaetze || 2,
     gymPause: typeof e.gymPause === "number" ? e.gymPause : 90   // Sekunden, 0 = aus
   };
+}
+
+// Ändert eine einzelne Einstellung, z. B. speichereEinstellung("reiter", "gym", false)
+function speichereEinstellung(gruppe, id, wert) {
+  const e = ladeEinstellungen();
+  e[gruppe][id] = wert;
+  speichern("einstellungen", e);
+}
+
+// Ist ein Bereich eingeschaltet?
+function reiterAn(id) {
+  return ladeEinstellungen().reiter[id] !== false;
+}
+
+// Wird ein Kasten auf der Startseite gezeigt? (eigener Schalter und sein Bereich an)
+function kastenAn(id) {
+  const kasten = KAESTEN.find(function (k) { return k.id === id; });
+  if (ladeEinstellungen().kaesten[id] === false) return false;
+  return !kasten.reiter || reiterAn(kasten.reiter);
+}
+
+// Blendet die Knöpfe unten in der Leiste passend ein und aus
+function wendeReiterAn() {
+  for (const knopf of document.querySelectorAll("nav button")) {
+    const bereich = knopf.dataset.bereich;
+    knopf.classList.toggle("versteckt", bereich !== "heute" && !reiterAn(bereich));
+  }
+}
+
+// Baut eine Zeile mit Text und Schalter (Checkbox)
+function schalterZeile(text, an, gesperrt, beiAenderung) {
+  const zeile = document.createElement("label");
+  zeile.className = "einstellung-zeile" + (gesperrt ? " gesperrt" : "");
+  const beschriftung = document.createElement("span");
+  beschriftung.textContent = text;
+  const schalter = document.createElement("input");
+  schalter.type = "checkbox";
+  schalter.className = "schalter";
+  schalter.checked = an;
+  schalter.disabled = gesperrt;
+  schalter.addEventListener("change", function () { beiAenderung(schalter.checked); });
+  zeile.append(beschriftung, schalter);
+  return zeile;
 }
 
 function gymPause() {
@@ -1848,6 +1915,29 @@ function gymSplit() {
 
 function zeigeEinstellungen() {
   const e = ladeEinstellungen();
+
+  // Bereiche
+  const reiterListe = document.getElementById("einstellungen-reiter");
+  reiterListe.innerHTML = "";
+  for (const reiter of REITER) {
+    reiterListe.append(schalterZeile(reiter.name, reiterAn(reiter.id), false, function (an) {
+      speichereEinstellung("reiter", reiter.id, an);
+      wendeReiterAn();
+      zeigeEinstellungen(); // Kästen des Bereichs sperren bzw. freigeben
+    }));
+  }
+
+  // Kästen der Startseite (gesperrt, wenn ihr Bereich aus ist)
+  const kaestenListe = document.getElementById("einstellungen-kaesten");
+  kaestenListe.innerHTML = "";
+  for (const kasten of KAESTEN) {
+    const bereichAus = kasten.reiter && !reiterAn(kasten.reiter);
+    const text = kasten.name + (bereichAus ? " (Bereich ist aus)" : "");
+    kaestenListe.append(schalterZeile(text, e.kaesten[kasten.id] !== false, bereichAus, function (an) {
+      speichereEinstellung("kaesten", kasten.id, an);
+    }));
+  }
+
   document.getElementById("einstellungen-gym-ziel").value = e.gymProWoche;
   document.getElementById("einstellungen-gym-saetze").value = e.gymSaetze;
   document.getElementById("einstellungen-gym-pause").value = e.gymPause;
@@ -1928,14 +2018,10 @@ function heuteKasten(titel, text, eintraege, zielBereich, fertig) {
   }
 
   const ueberschrift = document.createElement("strong");
-  ueberschrift.textContent = titel;
+  ueberschrift.textContent = (fertig ? "✅ " : "⏳ ") + titel;
   const beschreibung = document.createElement("span");
   beschreibung.textContent = text;
-  // Kreis rechts: leer = offen, gefüllt mit Haken = erledigt (Aussehen im CSS)
-  const status = document.createElement("span");
-  status.className = "status";
-  if (fertig) status.append(symbol("haken"));
-  kasten.append(ueberschrift, status, beschreibung, eintragsListe(eintraege));
+  kasten.append(ueberschrift, beschreibung, eintragsListe(eintraege));
 
   kasten.addEventListener("click", function () {
     zeigeBereich(zielBereich);
@@ -2071,7 +2157,7 @@ function schlafKasten() {
   kasten.className = "heute-kasten neutral";
 
   const ueberschrift = document.createElement("strong");
-  ueberschrift.textContent = "Schlafenszeit";
+  ueberschrift.textContent = "😴 Schlafenszeit";
   const text = document.createElement("span");
   text.textContent = "Licht aus um ca. " + lichtAus(wecker) + " (Wecker ";
 
@@ -2316,7 +2402,7 @@ function mailHeuteKasten() {
   }
   if (zeilen.length === 0) zeilen.push("Keine Termine heute");
 
-  return infoKasten("Heute laut Mail · Stand " + code.erstellt.slice(11, 16), wetterText(code.wetter), zeilen);
+  return infoKasten("📬 Heute laut Mail · Stand " + code.erstellt.slice(11, 16), wetterText(code.wetter), zeilen);
 }
 
 // Kasten „Morgen laut Mail“ (Abend-Code, der sich auf morgen bezieht)
@@ -2330,7 +2416,7 @@ function mailMorgenKasten() {
   }
   if (zeilen.length === 0) zeilen.push("Keine Termine morgen");
 
-  return infoKasten("Morgen laut Mail · Stand " + code.erstellt.slice(11, 16), wetterText(code.wetter), zeilen);
+  return infoKasten("🌙 Morgen laut Mail · Stand " + code.erstellt.slice(11, 16), wetterText(code.wetter), zeilen);
 }
 
 // Knopf „Aus Mail einfügen“: erst die Zwischenablage versuchen, sonst ein Textfeld zeigen
@@ -2398,15 +2484,15 @@ function zeigeHeute() {
 
   // 0. Aus der Morgen-Mail: Termine, Wetter, Geburtstage, Antwort-Mails
   const mailHeute = mailHeuteKasten();
-  if (mailHeute) kaesten.append(mailHeute);
+  if (mailHeute && kastenAn("mail")) kaesten.append(mailHeute);
 
   // 0b. Morgenroutine-Challenge (nur 16.–29.10.)
   const routine = morgenroutineKasten(tagHabits);
-  if (routine) kaesten.append(routine);
+  if (routine && kastenAn("routine")) kaesten.append(routine);
 
   // 1. Affirmationen: heute schon gelesen?
   const gelesen = tagHabits["affirmationen"] === "x";
-  kaesten.append(heuteKasten(
+  if (kastenAn("affirmationen")) kaesten.append(heuteKasten(
     "Affirmationen",
     gelesen ? "Heute gelesen" : "Noch nicht gelesen",
     [],
@@ -2421,7 +2507,7 @@ function zeigeHeute() {
   const mindestOffen = mindest.filter(function (h) { return tagHabits[h.id] !== "x"; });
   const gesamtErledigt = habits.filter(function (h) { return tagHabits[h.id] === "x"; }).length;
   const happy = laden("happy", {})[heute()];
-  kaesten.append(heuteKasten(
+  if (kastenAn("habits")) kaesten.append(heuteKasten(
     "Habits",
     "Mindestens " + (mindest.length - mindestOffen.length) + " von " + mindest.length +
       " · gesamt " + gesamtErledigt + " von " + habits.length +
@@ -2438,7 +2524,7 @@ function zeigeHeute() {
     return d >= wochenStart && d <= heute() && gymTrainiert(d);
   }).length;
   const trainiert = gymTrainiert(heute());
-  if (trainiert || gymDieseWoche < gymProWoche()) {
+  if (kastenAn("training") && (trainiert || gymDieseWoche < gymProWoche())) {
     const gymPlan = ladeGymPlan();
     const einheitHeute = gymEinheit(heute());
     kaesten.append(heuteKasten(
@@ -2459,7 +2545,7 @@ function zeigeHeute() {
   };
   const anzahlDankbar = gefuellt(tag.dankbar);
   const anzahlFuerMich = gefuellt(tag.fuerMich);
-  kaesten.append(heuteKasten(
+  if (kastenAn("tagebuch")) kaesten.append(heuteKasten(
     "Tagebuch",
     "Geleistet: " + anzahlFuerMich + " (Ziel: mind. " + TAGEBUCH_MIN_GELEISTET + ") · Dankbar: " + anzahlDankbar,
     [],
@@ -2468,17 +2554,18 @@ function zeigeHeute() {
   ));
 
   // 4. Sport diese Woche
-  kaesten.append(sportKasten());
+  if (kastenAn("sport")) kaesten.append(sportKasten());
 
   // 5. Aus der Abend-Mail: was morgen ansteht
   const mailMorgen = mailMorgenKasten();
-  if (mailMorgen) kaesten.append(mailMorgen);
+  if (mailMorgen && kastenAn("mail")) kaesten.append(mailMorgen);
 
   // 6. Schlafenszeit (ab 17 Uhr)
   const schlaf = schlafKasten();
-  if (schlaf) kaesten.append(schlaf);
+  if (schlaf && kastenAn("schlaf")) kaesten.append(schlaf);
 
   // 7. Wochenrückblick: immer die aktuelle Woche; sonntags automatisch aufgeklappt
+  document.getElementById("wochenrueckblick").classList.toggle("versteckt", !kastenAn("wochenrueckblick"));
   rueckblickMontag = montagVon(heute());
   if (wochentag(heute()) === 6) {
     document.getElementById("wochenrueckblick").open = true;
@@ -2535,7 +2622,9 @@ for (const knopf of knoepfe) {
   });
 }
 
-// Beim Start: Datumsleisten auf heute stellen und die Tagesansicht zeigen
+// Beim Start: ausgeschaltete Bereiche ausblenden, Datumsleisten auf heute stellen
+// und die Tagesansicht zeigen
+wendeReiterAn();
 waehleTag(heute());
 zeigeBereich("heute");
 
