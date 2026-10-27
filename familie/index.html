@@ -4,7 +4,7 @@
   <!-- Zeichensatz: damit Umlaute (ä, ö, ü) richtig angezeigt werden -->
   <meta charset="UTF-8">
   <!-- Damit die Seite auf dem Handy nicht winzig verkleinert dargestellt wird -->
-  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
   <title>Mein Tag</title>
   <!-- Verbindet die Seite mit der Datei für das Aussehen -->
   <link rel="stylesheet" href="style.css">
@@ -43,7 +43,7 @@
 
     <!-- Wochenrückblick: aufklappbar, sonntags automatisch offen -->
     <details id="wochenrueckblick">
-      <summary>📊 Wochenrückblick</summary>
+      <summary>Wochenrückblick</summary>
       <div class="tagesleiste">
         <button id="woche-zurueck" title="Vorherige Woche">‹</button>
         <span id="woche-anzeige"></span>
@@ -64,10 +64,10 @@
     <p class="frueherer-tag versteckt">
       Du bearbeitest einen früheren Tag. <button class="zu-heute">Zurück zu heute</button>
     </p>
-    <p class="hinweis">Tippen: leer → ✓ erledigt → ½ teilweise → leer</p>
+    <p class="hinweis">Einmal tippen: erledigt · zweimal: teilweise · dreimal: wieder leer</p>
     <p id="habits-leer" class="hinweis versteckt">
       Noch keine Habits. Tippe auf „Habits bearbeiten“, um deine ersten anzulegen.
-      Mit ☆ markierst du Mindest-Habits: Sind die erledigt, gilt der Tag als geschafft.
+      Mit dem Stern markierst du Mindest-Habits: Sind die erledigt, gilt der Tag als geschafft.
     </p>
     <!-- Die Habits füllt app.js hier automatisch hinein -->
     <ul id="habit-liste"></ul>
@@ -118,7 +118,7 @@
     <h2>Affirmationen</h2>
     <!-- Die Sätze füllt app.js hier automatisch hinein -->
     <div id="affirmationen-text"></div>
-    <button id="affirmationen-gelesen">Heute gelesen ✓</button>
+    <button id="affirmationen-gelesen">Heute gelesen</button>
 
     <!-- Text bearbeiten: wird nur auf diesem Gerät gespeichert -->
     <details id="affirmationen-bearbeiten">
@@ -149,12 +149,12 @@
     <!-- Die Übungen füllt app.js automatisch -->
     <div id="gym-uebungen"></div>
 
-    <!-- Plan ändern: ✏️ ▲ ▼ ✕ und neue Übungen -->
-    <button id="gym-bearbeiten-knopf" class="nebenknopf">✏️ Plan bearbeiten</button>
+    <!-- Plan ändern: verschieben, ändern, entfernen und neue Übungen -->
+    <button id="gym-bearbeiten-knopf" class="nebenknopf">Plan bearbeiten</button>
 
     <!-- Fortschritt: Plan-Ring, Gesamtkurve und eine kleine Linie pro Übung -->
     <details id="gym-fortschritt" open>
-      <summary>📈 Fortschritt</summary>
+      <summary>Fortschritt</summary>
       <div id="gym-fortschritt-inhalt"></div>
     </details>
   </section>
@@ -181,7 +181,7 @@
     <h3>Sport</h3>
     <p class="hinweis">
       Wochenziele aus deinen Habits, z. B. „Spazieren 3× pro Woche“.
-      Gezählt werden nur volle Häkchen (✓).
+      Gezählt werden nur ganz erledigte Tage, nicht „teilweise“.
     </p>
     <div id="einstellungen-sport"></div>
 

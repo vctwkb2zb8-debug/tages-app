@@ -1,37 +1,20 @@
 /* ===== Farbpalette =====
    Alle Farben stehen hier an EINER Stelle (sogenannte CSS-Variablen).
    Weiter unten wird nur noch mit var(--name) auf sie verwiesen.
-   Probier's aus: Ändere --akzent, und die ganze App bekommt eine neue Farbe. */
+   Die App ist immer dunkel: fast schwarz, helle Schrift, ein warmer Akzent. */
 :root {
-  --akzent: #2e7d6b;          /* Hauptfarbe: Knöpfe, aktiver Tab, Haken */
-  --hintergrund: #f4f5f2;     /* Seitenhintergrund */
-  --karte: #ffffff;           /* Hintergrund von Kästen und Feldern */
-  --text: #1f2421;
-  --text-leise: #6b726d;      /* Nebeninfos wie Datum */
-  --rand: #dde0dc;
-  --offen: #fff6dc;           /* Startseite: noch offen */
-  --offen-rand: #efd98f;
-  --fertig: #e3f3e8;          /* Startseite: erledigt */
-  --fertig-rand: #9fd1ae;
-  --warnung: #c62828;         /* überfällige ToDos */
-  color-scheme: light dark;   /* Datumsauswahl & Häkchen passen sich hell/dunkel an */
-}
-
-/* Dunkelmodus: Wenn das Handy dunkel eingestellt ist, gelten diese Farben */
-@media (prefers-color-scheme: dark) {
-  :root {
-    --akzent: #6fcfb4;
-    --hintergrund: #141716;
-    --karte: #1f2321;
-    --text: #e8ebe9;
-    --text-leise: #9aa29d;
-    --rand: #343a37;
-    --offen: #3a3320;
-    --offen-rand: #6b5b2a;
-    --fertig: #1d3326;
-    --fertig-rand: #2f5d40;
-    --warnung: #ff8a80;
-  }
+  --hintergrund: #0a0a0a;     /* Seitenhintergrund, passt zum Icon */
+  --flaeche: #141414;         /* Karten und Eingabefelder */
+  --flaeche-hell: #1e1e1e;    /* Knöpfe, Felder in Karten */
+  --rand: #262626;            /* feine Trennlinien */
+  --text: #ededed;
+  --text-leise: #8a8a8a;      /* Nebeninfos wie Datum */
+  --text-blass: #555555;      /* Inaktives, Platzhalter */
+  --akzent: #d8c8a2;          /* der einzige Farbton: erledigt, aktiv, Fortschritt */
+  --akzent-text: #0a0a0a;     /* Schrift auf dem Akzent */
+  --warnung: #e08a7a;
+  --radius: 12px;
+  color-scheme: dark;         /* Datumsauswahl & Tastatur ebenfalls dunkel */
 }
 
 
@@ -40,70 +23,161 @@
 html {
   touch-action: manipulation;
   -webkit-text-size-adjust: 100%;
+  background: var(--hintergrund);
 }
 
 body {
-  font-family: system-ui, sans-serif;
+  /* Systemschrift: auf dem iPhone San Francisco, auf Android Roboto – nichts aus dem Netz */
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+  font-size: 16px;
+  line-height: 1.45;
   background: var(--hintergrund);
   color: var(--text);
   margin: 0 auto;
-  max-width: 600px;              /* auf großen Bildschirmen nicht zu breit */
-  padding: 16px 16px 96px;       /* unten Platz lassen für die Leiste */
-  line-height: 1.4;
+  max-width: 560px;              /* auf großen Bildschirmen nicht zu breit */
+  /* Oben/unten Platz für Statusleiste, Kamera-Aussparung und die untere Leiste */
+  padding: calc(env(safe-area-inset-top) + 20px) 20px calc(env(safe-area-inset-bottom) + 100px);
+  -webkit-font-smoothing: antialiased;
 }
 
+/* Begrüßung: klein und leise über der großen Überschrift */
 h1 {
-  font-size: 22px;
-  margin: 8px 0 16px;
+  font-size: 15px;
+  font-weight: 500;
+  color: var(--text-leise);
+  margin: 0 0 4px;
 }
 
 h2 {
-  font-size: 26px;
-  margin: 0 0 12px;
+  font-size: 32px;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  margin: 0 0 4px;
 }
 
+/* Zwischenüberschriften: klein, gesperrt, in Großbuchstaben */
 h3 {
-  font-size: 16px;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
   color: var(--text-leise);
-  margin: 24px 0 8px;
+  margin: 36px 0 10px;
 }
 
 /* Alle Eingabefelder und Knöpfe: gleiche Grundform */
 input,
+select,
+textarea,
 button {
   font: inherit;
+  font-size: 16px;               /* unter 16 px zoomt das iPhone beim Antippen von selbst hinein */
   color: var(--text);
-  background: var(--karte);
-  border: 1px solid var(--rand);
-  border-radius: 10px;
 }
 
-input {
-  padding: 10px 12px;
+input,
+select,
+textarea {
+  background: var(--flaeche);
+  border: 1px solid var(--rand);
+  border-radius: var(--radius);
+  padding: 12px 14px;
+  outline: none;
 }
 
-select {
-  font: inherit;
-  color: var(--text);
-  background: var(--karte);
-  border: 1px solid var(--rand);
-  border-radius: 10px;
-  padding: 10px 12px;
+input:focus,
+select:focus,
+textarea:focus {
+  border-color: var(--text-blass);
+}
+
+input::placeholder,
+textarea::placeholder {
+  color: var(--text-blass);
 }
 
 button {
-  padding: 8px 12px;
+  background: var(--flaeche-hell);
+  border: none;
+  border-radius: var(--radius);
+  padding: 11px 16px;
   cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
 }
 
-/* Knöpfe „Hinzufügen“: in der Akzentfarbe */
+button:active {
+  opacity: 0.7;
+}
+
+/* Hauptknöpfe („Hinzufügen“, „Speichern“): hell auf dunkel */
 button[type="submit"] {
-  background: var(--akzent);
-  border-color: var(--akzent);
-  color: var(--karte);
+  background: var(--text);
+  color: var(--hintergrund);
   font-weight: 600;
 }
 
+textarea {
+  display: block;
+  width: 100%;
+  box-sizing: border-box;
+  margin: 8px 0;
+  resize: vertical;
+}
+
+/* Kleine Erklärtexte */
+.hinweis {
+  color: var(--text-leise);
+  font-size: 14px;
+}
+
+/* Textknöpfe wie „Habits bearbeiten“: ohne Fläche, leise */
+.nebenknopf {
+  display: block;
+  background: none;
+  padding: 10px 0;
+  margin: 12px 0;
+  color: var(--text-leise);
+  font-size: 15px;
+}
+
+/* Feine Linien-Symbole (SVG). Sie färben sich mit der Textfarbe. */
+.symbol {
+  width: 18px;
+  height: 18px;
+  display: block;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.8;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+/* Aufklapp-Bereiche (<details>): eigener Pfeil statt des Standard-Dreiecks */
+summary {
+  list-style: none;
+  cursor: pointer;
+}
+
+summary::-webkit-details-marker {
+  display: none;
+}
+
+summary::after {
+  content: "";
+  float: right;
+  width: 7px;
+  height: 7px;
+  margin: 7px 4px 0 0;
+  border-right: 1.5px solid var(--text-leise);
+  border-bottom: 1.5px solid var(--text-leise);
+  transform: rotate(45deg);      /* ein auf die Spitze gestelltes Winkelchen = Pfeil nach unten */
+  transition: transform 0.2s;
+}
+
+details[open] > summary::after {
+  transform: rotate(-135deg);    /* offen: Pfeil nach oben */
+  margin-top: 10px;
+}
 
 
 /* ===== Untere Leiste ===== */
@@ -113,110 +187,100 @@ nav {
   left: 0;
   right: 0;
   display: flex;
-  background: var(--karte);
+  justify-content: center;
+  padding-bottom: env(safe-area-inset-bottom);
+  background: rgba(10, 10, 10, 0.92);
+  backdrop-filter: blur(16px);   /* Inhalt darunter verschwimmt leicht */
+  -webkit-backdrop-filter: blur(16px);
   border-top: 1px solid var(--rand);
 }
 
 nav button {
-  flex: 1;                       /* alle fünf Knöpfe gleich breit */
+  flex: 1;                       /* alle Knöpfe gleich breit */
+  max-width: 112px;
   display: flex;
   flex-direction: column;        /* Symbol oben, Wort darunter */
   align-items: center;
-  gap: 3px;
-  padding: 8px 2px 10px;
-  font-size: 12px;
-  border: none;
+  gap: 4px;
+  padding: 10px 2px 8px;
+  font-size: 11px;
+  letter-spacing: 0.02em;
   border-radius: 0;
   background: none;
-  color: var(--text-leise);
+  color: var(--text-blass);
 }
 
 /* Die Symbole: nur Linien, Farbe = Textfarbe des Knopfs */
 nav svg {
-  width: 24px;
-  height: 24px;
+  width: 23px;
+  height: 23px;
   fill: none;
   stroke: currentColor;
-  stroke-width: 1.8;
+  stroke-width: 1.6;
   stroke-linecap: round;
   stroke-linejoin: round;
 }
 
-/* Der Knopf des gerade offenen Bereichs */
+/* Der Knopf des gerade offenen Bereichs: einfach hell */
 nav button.aktiv {
-  color: var(--akzent);
-  font-weight: bold;
-  box-shadow: inset 0 3px 0 var(--akzent); /* farbiger Strich oben */
-}
-
-
-/* Kleine Erklärtexte */
-.hinweis {
-  color: var(--text-leise);
-  font-size: 14px;
-}
-
-/* Fehlermeldung beim App-Code: gut sichtbar */
-.hinweis.fehler {
-  color: var(--warnung);
-  background: var(--karte);
-  border: 1px solid var(--warnung);
-  border-radius: 10px;
-  padding: 10px 12px;
-}
-
-/* Unauffällige Knöpfe wie „Habits bearbeiten“ oder „Prüfen“ */
-.nebenknopf {
-  display: block;
-  margin: 8px 0 12px;
-}
-
-/* Große Textfelder (Import, Affirmationen bearbeiten) */
-textarea {
-  display: block;
-  width: 100%;
-  box-sizing: border-box;
-  font: inherit;
-  font-size: 16px;               /* unter 16 px zoomt das iPhone beim Antippen von selbst hinein */
   color: var(--text);
-  background: var(--karte);
-  border: 1px solid var(--rand);
-  border-radius: 10px;
-  padding: 10px 12px;
-  margin: 8px 0;
 }
 
-/* Aufklapp-Kästen (Import, Affirmationen bearbeiten) */
-#import,
-#gym-import,
-#affirmationen-bearbeiten {
-  margin-top: 16px;
-  padding: 12px 14px;
-  background: var(--karte);
-  border: 1px solid var(--rand);
-  border-radius: 12px;
+
+/* ===== Kopfzeile: Überschrift links, Knopf rechts ===== */
+.kopfzeile {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
 }
 
-#import summary,
-#gym-import summary,
-#affirmationen-bearbeiten summary {
-  cursor: pointer;
+.kopfzeile h2 {
+  margin: 0;
+}
+
+.kopfzeile .nebenknopf {
+  margin: 0;
+  color: var(--text);
+}
+
+/* Knopf nur mit Symbol, z. B. das Zahnrad */
+.symbolknopf {
+  background: none;
+  padding: 8px;
+  margin-right: -8px;            /* bündig mit dem rechten Rand */
   color: var(--text-leise);
 }
 
+.symbolknopf svg {
+  width: 22px;
+  height: 22px;
+  display: block;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.6;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
 
-/* ===== Datumsleiste (Habits und Tagebuch) ===== */
+
+/* ===== Datumsleiste (Habits, Tagebuch, Gym, Wochenrückblick) ===== */
 .tagesleiste {
   display: flex;
   align-items: center;
   gap: 8px;
-  margin-bottom: 8px;
+  margin: 20px 0 8px;
 }
 
 .tagesleiste button {
-  font-size: 22px;
+  width: 40px;
+  height: 40px;
+  padding: 0;
+  border-radius: 50%;
+  font-size: 20px;
   line-height: 1;
-  padding: 8px 16px;
+  background: var(--flaeche);
+  color: var(--text-leise);
 }
 
 .tagesleiste button:disabled {
@@ -228,22 +292,177 @@ textarea {
 #woche-anzeige {
   flex: 1;
   text-align: center;
-  font-weight: 600;
+  font-size: 15px;
+  font-weight: 500;
 }
 
 /* Hinweis, wenn ein früherer Tag offen ist */
 .frueherer-tag {
-  background: var(--offen);
-  border: 1px solid var(--offen-rand);
-  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  background: var(--flaeche);
+  border-left: 2px solid var(--akzent);
+  border-radius: 4px var(--radius) var(--radius) 4px;
   padding: 10px 12px;
-  font-size: 15px;
+  font-size: 14px;
+  color: var(--text-leise);
 }
 
 .frueherer-tag button {
-  margin-left: 4px;
-  padding: 4px 10px;
+  flex: none;
+  padding: 6px 12px;
   font-size: 14px;
+}
+
+
+/* ===== Startseite ===== */
+#heute-datum {
+  color: var(--text-leise);
+  margin: 0 0 24px;
+}
+
+/* Erster Start: „Wie heißt du?“ */
+#name-form {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 24px;
+}
+
+#name-form label {
+  flex: 1 1 100%;
+  color: var(--text-leise);
+}
+
+#name-form input {
+  flex: 1;
+  min-width: 0;
+}
+
+/* Die Kästen sind Zeilen mit feinen Linien dazwischen, keine bunten Karten */
+#heute-kaesten {
+  border-top: 1px solid var(--rand);
+}
+
+.heute-kasten {
+  display: grid;
+  grid-template-columns: 1fr auto; /* Text links, Status-Kreis rechts */
+  column-gap: 16px;
+  width: 100%;
+  box-sizing: border-box;
+  text-align: left;
+  background: none;
+  border-radius: 0;
+  border-bottom: 1px solid var(--rand);
+  padding: 18px 0;
+}
+
+.heute-kasten strong {
+  font-size: 17px;
+  font-weight: 500;
+}
+
+.heute-kasten > span:not(.status) {
+  grid-column: 1;
+  color: var(--text-leise);
+  font-size: 14px;
+  margin-top: 2px;
+}
+
+.heute-kasten ul {
+  grid-column: 1;
+  list-style: none;
+  padding: 0;
+  margin: 8px 0 0;
+  font-size: 14px;
+  color: var(--text-leise);
+}
+
+.heute-kasten ul:empty {
+  display: none;
+}
+
+.heute-kasten li::before {
+  content: "– ";
+  color: var(--text-blass);
+}
+
+/* Status rechts: leerer Ring = offen, gefüllter Kreis mit Haken = erledigt */
+.status {
+  grid-column: 2;
+  grid-row: 1 / span 3;
+  align-self: center;
+  width: 22px;
+  height: 22px;
+  box-sizing: border-box;
+  border: 1.5px solid var(--text-blass);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--akzent-text);
+}
+
+.heute-kasten.fertig .status {
+  background: var(--akzent);
+  border-color: var(--akzent);
+}
+
+.status .symbol {
+  width: 13px;
+  height: 13px;
+  stroke-width: 2.4;
+}
+
+/* Neutrale Kästen (Schlafenszeit): ohne Status, mit Eingabefeld */
+.heute-kasten.neutral {
+  display: block;
+}
+
+.heute-kasten.neutral strong {
+  display: block;
+}
+
+.heute-kasten.neutral input {
+  padding: 2px 6px;
+  margin: 0 2px;
+  font-size: 14px;
+  border-radius: 6px;
+}
+
+/* Wochenrückblick */
+#wochenrueckblick {
+  border-bottom: 1px solid var(--rand);
+  padding: 18px 0;
+}
+
+#wochenrueckblick summary {
+  font-size: 17px;
+  font-weight: 500;
+}
+
+#wochenrueckblick h3 {
+  margin: 24px 0 6px;
+}
+
+#wochenrueckblick ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  font-size: 15px;
+  color: var(--text-leise);
+}
+
+#wochenrueckblick li {
+  padding: 3px 0;
+}
+
+#wochenrueckblick p {
+  margin: 0;
+  color: var(--text-leise);
+  font-size: 15px;
 }
 
 
@@ -251,14 +470,15 @@ textarea {
 #habit-liste {
   list-style: none;
   padding: 0;
-  margin: 0 0 16px;
+  margin: 8px 0 16px;
+  border-top: 1px solid var(--rand);
 }
 
 #habit-liste li {
   display: flex;
   align-items: center;
-  gap: 4px;
-  margin-bottom: 6px;
+  gap: 2px;
+  border-bottom: 1px solid var(--rand);
 }
 
 /* Jedes Habit ist ein großer Knopf über die ganze Breite */
@@ -266,49 +486,71 @@ textarea {
   flex: 1;                       /* nimmt den ganzen freien Platz */
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 14px;
   text-align: left;
-  padding: 10px 12px;
+  padding: 15px 0;
   font-size: 17px;
-  border-radius: 12px;
+  background: none;
+  border-radius: 0;
 }
 
-/* Das Kästchen links: leer, ✓ oder ½ */
+/* Das Kästchen links: leer, Haken oder ½ */
 .kaestchen {
   flex: none;
-  width: 26px;
-  height: 26px;
-  border: 2px solid var(--rand);
+  width: 24px;
+  height: 24px;
+  box-sizing: border-box;
+  border: 1.5px solid var(--text-blass);
   border-radius: 7px;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-weight: bold;
+  font-size: 13px;
+  font-weight: 600;
 }
 
-/* Erledigt: Kästchen voll in der Akzentfarbe */
+.kaestchen .symbol {
+  width: 14px;
+  height: 14px;
+  stroke-width: 2.4;
+}
+
+/* Erledigt: Kästchen voll im Akzent, Name etwas leiser */
 #habit-liste .erledigt .kaestchen {
   background: var(--akzent);
   border-color: var(--akzent);
-  color: var(--karte);
+  color: var(--akzent-text);
 }
 
-/* Teilweise: Kästchen mit farbigem Rand */
+#habit-liste .erledigt {
+  color: var(--text-leise);
+}
+
+/* Teilweise: Kästchen mit Akzent-Rand */
 #habit-liste .teilweise .kaestchen {
   border-color: var(--akzent);
   color: var(--akzent);
 }
 
-/* ✏️ und ✕ nur im Bearbeiten-Modus zeigen */
+/* Stern, Stift und Kreuz nur im Bearbeiten-Modus zeigen */
 #habit-liste button.bearbeiten {
   display: none;
-  border: none;
   background: none;
+  padding: 10px;
   color: var(--text-leise);
 }
 
 #habit-liste.bearbeiten-modus button.bearbeiten {
   display: block;
+}
+
+/* Markierter Mindest-Habit: Stern gefüllt im Akzent */
+#habit-liste button.bearbeiten.an {
+  color: var(--akzent);
+}
+
+#habit-liste button.bearbeiten.an .symbol {
+  fill: currentColor;
 }
 
 /* Formular zum Hinzufügen */
@@ -320,435 +562,59 @@ textarea {
 
 #habit-neu input {
   flex: 1;
+  min-width: 0;
 }
 
 /* Glücks-Rating */
 #happy {
   display: flex;
   flex-wrap: wrap;
-  align-items: center;
+  align-items: baseline;
   justify-content: space-between;
-  background: var(--karte);
-  border: 1px solid var(--rand);
-  border-radius: 12px;
-  padding: 12px 14px;
+  margin-top: 28px;
+}
+
+#happy label {
+  color: var(--text-leise);
 }
 
 #happy-wert {
-  font-size: 22px;
-  font-weight: bold;
-  color: var(--akzent);
+  font-size: 28px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
 }
 
+/* Schieberegler: dünne Linie, runder heller Griff */
 #happy-regler {
   flex: 1 1 100%;
-  accent-color: var(--akzent);
+  -webkit-appearance: none;
+  appearance: none;
+  height: 2px;
+  margin: 18px 0 8px;
   padding: 0;
   border: none;
-  margin-top: 8px;
+  border-radius: 1px;
+  background: var(--rand);
+}
+
+#happy-regler::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: var(--text);
+}
+
+#happy-regler::-moz-range-thumb {
+  width: 24px;
+  height: 24px;
+  border: none;
+  border-radius: 50%;
+  background: var(--text);
 }
 
 #happy-regler.unbewertet {
   opacity: 0.4;                  /* blass, solange heute noch nicht bewertet */
-}
-
-#import-uebernehmen,
-#gym-import-uebernehmen {
-  background: var(--akzent);
-  border-color: var(--akzent);
-  color: var(--karte);
-  font-weight: 600;
-}
-
-
-/* ===== Gym ===== */
-/* Farben der zwei Einheiten (Kurve und Legende) */
-:root {
-  --gym-a: #2e7d6b;
-  --gym-b: #4a6fa5;
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --gym-a: #6fcfb4;
-    --gym-b: #8fb0e0;
-  }
-}
-
-/* Auswahl Gym A / Gym B: zwei gleich breite Knöpfe */
-#gym-einheiten {
-  display: flex;
-  gap: 8px;
-  margin: 8px 0 4px;
-}
-
-#gym-einheiten button {
-  flex: 1;
-  padding: 10px;
-  font-weight: 600;
-}
-
-#gym-einheiten button.aktiv {
-  background: var(--akzent);
-  border-color: var(--akzent);
-  color: var(--karte);
-}
-
-/* Infofeld unter der Auswahl */
-.gym-info {
-  background: var(--karte);
-  border: 1px solid var(--rand);
-  border-radius: 12px;
-  padding: 10px 14px;
-  margin: 8px 0 12px;
-  font-size: 14px;
-}
-
-.gym-info span {
-  display: block;
-  margin-top: 2px;
-  color: var(--text-leise);
-}
-
-/* Eine Übung = eine Karte */
-.gym-uebung {
-  background: var(--karte);
-  border: 1px solid var(--rand);
-  border-radius: 12px;
-  padding: 12px 14px;
-  margin-bottom: 10px;
-}
-
-.gym-uebung strong {
-  display: block;
-}
-
-/* Kleine graue Zeile: Gewichtsart · Pause · Notiz */
-.gym-meta {
-  display: block;
-  font-size: 13px;
-  color: var(--text-leise);
-  margin: 2px 0 6px;
-}
-
-/* Hinweis „Gewicht erhöhen / reduzieren“ */
-.gym-tipp {
-  display: block;
-  font-size: 14px;
-  color: var(--akzent);
-  margin-bottom: 6px;
-}
-
-/* Eine Satz-Zeile: „1 [kg] [Wdh.] [✓] Letztes Mal …“ */
-.gym-satz {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  margin-top: 6px;
-}
-
-.gym-nummer {
-  flex: none;
-  width: 16px;
-  font-size: 14px;
-  color: var(--text-leise);
-}
-
-.gym-satz input {
-  width: 54px;
-  padding: 8px;
-  text-align: center;
-}
-
-/* Vorgefüllter Vorschlag, noch nicht bestätigt: blass */
-.gym-satz input.vorschlag {
-  color: var(--text-leise);
-}
-
-.gym-haken {
-  flex: none;
-  width: 38px;
-  padding: 8px 0;
-  color: var(--text-leise);
-}
-
-/* Übung zum Abhaken (z. B. Dehnen): Name links, ✓ rechts */
-.gym-haken-karte {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-}
-
-/* Gemachter Satz: ✓ in der Akzentfarbe, Felder mit grünem Rand */
-.gym-satz.gemacht .gym-haken,
-.gym-haken-karte.gemacht .gym-haken {
-  background: var(--akzent);
-  border-color: var(--akzent);
-  color: var(--karte);
-  font-weight: 700;
-}
-
-.gym-satz.gemacht input,
-.gym-haken-karte.gemacht {
-  border-color: var(--akzent);
-}
-
-.gym-letztes {
-  flex: 1;
-  font-size: 12px;
-  color: var(--text-leise);
-  text-align: right;
-}
-
-.gym-letztes.besser {
-  color: var(--akzent);
-  font-weight: 600;
-}
-
-/* Plan bearbeiten: eine Zeile pro Übung mit ▲ ▼ Name ✏️ ✕ */
-.gym-edit-zeile {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  background: var(--karte);
-  border: 1px solid var(--rand);
-  border-radius: 12px;
-  padding: 6px 8px;
-  margin-bottom: 6px;
-}
-
-.gym-edit-zeile button {
-  flex: none;
-  padding: 8px 10px;
-  border: none;
-  background: none;
-  color: var(--text-leise);
-}
-
-.gym-edit-zeile button:disabled {
-  opacity: 0.25;
-  cursor: default;
-}
-
-.gym-edit-name {
-  flex: 1;
-  font-size: 16px;
-}
-
-/* Formular für eine Übung */
-.gym-edit-form {
-  background: var(--karte);
-  border: 1px solid var(--akzent);
-  border-radius: 12px;
-  padding: 12px 14px;
-  margin-bottom: 10px;
-}
-
-.gym-edit-form label {
-  display: block;
-  margin-bottom: 8px;
-}
-
-.gym-edit-form label span {
-  display: block;
-  font-size: 13px;
-  color: var(--text-leise);
-  margin-bottom: 2px;
-}
-
-.gym-edit-form input,
-.gym-edit-form select {
-  width: 100%;
-  box-sizing: border-box;
-}
-
-.gym-edit-knoepfe {
-  display: flex;
-  gap: 8px;
-}
-
-.gym-edit-knoepfe button[type="submit"] {
-  flex: 1;
-}
-
-/* Fortschritt */
-#gym-fortschritt {
-  margin-top: 16px;
-  padding: 12px 14px;
-  background: var(--karte);
-  border: 1px solid var(--rand);
-  border-radius: 14px;
-}
-
-#gym-fortschritt summary {
-  cursor: pointer;
-  font-size: 18px;
-  font-weight: bold;
-}
-
-/* Plan-Ring mit Text daneben */
-.gym-ring-zeile {
-  display: flex;
-  align-items: center;
-  gap: 16px;
-  margin: 10px 0 4px;
-}
-
-.gym-ring-zeile > div {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  font-size: 14px;
-  color: var(--text-leise);
-}
-
-.gym-ring-zeile strong {
-  font-size: 18px;
-  color: var(--text);
-}
-
-.gym-ring {
-  flex: none;
-  width: 104px;
-  height: 104px;
-}
-
-.gym-ring .ring-spur {
-  fill: none;
-  stroke: var(--rand);
-  stroke-width: 10;
-}
-
-.gym-ring .ring-fuellung {
-  fill: none;
-  stroke: var(--akzent);
-  stroke-width: 10;
-  stroke-linecap: round;
-}
-
-.gym-ring .ring-zahl {
-  fill: var(--text);
-  font-size: 22px;
-  font-weight: 700;
-}
-
-/* Gesamtkurve */
-.gym-kurve {
-  width: 100%;
-  height: auto;
-  display: block;
-  margin: 8px 0 0;
-}
-
-.gym-kurve .nulllinie {
-  stroke: var(--rand);
-  stroke-width: 1;
-  stroke-dasharray: 4 3;
-}
-
-.gym-kurve .verlauf {
-  fill: none;
-  stroke: var(--text-leise);
-  stroke-width: 2;
-  stroke-linejoin: round;
-}
-
-.gym-kurve .achse {
-  fill: var(--text-leise);
-  font-size: 10px;
-}
-
-.gym-kurve .punkt { stroke: var(--karte); stroke-width: 2; }
-.gym-kurve .punkt.A, .punkt-legende.A { fill: var(--gym-a); background: var(--gym-a); }
-.gym-kurve .punkt.B, .punkt-legende.B { fill: var(--gym-b); background: var(--gym-b); }
-
-/* Kleine farbige Punkte in der Legende */
-.punkt-legende {
-  display: inline-block;
-  width: 10px;
-  height: 10px;
-  border-radius: 50%;
-  margin: 0 4px 0 8px;
-}
-
-/* Eine kleine Linie pro Übung: Name | Linie | Prozent */
-.gym-fortschritt-zeile {
-  display: grid;
-  grid-template-columns: 1fr 120px 3.6em;
-  align-items: center;
-  gap: 8px;
-  font-size: 14px;
-  margin: 6px 0;
-}
-
-.gym-fortschritt-zeile .wert {
-  text-align: right;
-  font-variant-numeric: tabular-nums;
-}
-
-.gym-fortschritt-zeile .wert.minus {
-  color: var(--warnung);
-}
-
-.gym-linie {
-  width: 120px;
-  height: 28px;
-}
-
-.gym-linie .linie {
-  fill: none;
-  stroke: var(--akzent);
-  stroke-width: 2;
-  stroke-linejoin: round;
-  stroke-linecap: round;
-}
-
-.gym-linie .linie-punkt {
-  fill: var(--akzent);
-}
-
-
-/* ===== Affirmationen ===== */
-#affirmationen-text ul {
-  list-style: none;
-  padding: 0;
-  margin: 0;
-}
-
-#affirmationen-text li {
-  font-size: 18px;
-  padding: 10px 0;
-  border-bottom: 1px solid var(--rand);
-}
-
-/* Die besondere Zeile am Ende („! …“) */
-.hervorgehoben {
-  margin: 20px 0;
-  padding: 16px;
-  font-size: 19px;
-  font-weight: 600;
-  text-align: center;
-  background: var(--fertig);
-  border: 1px solid var(--fertig-rand);
-  border-radius: 14px;
-}
-
-#affirmationen-gelesen {
-  display: block;
-  width: 100%;
-  margin-top: 8px;
-  padding: 14px;
-  font-weight: 600;
-  background: var(--akzent);
-  border-color: var(--akzent);
-  color: var(--karte);
-}
-
-/* Nach dem Antippen: dezent, damit der Lächel-Kasten auffälliger bleibt */
-#affirmationen-gelesen.fertig {
-  background: var(--karte);
-  border-color: var(--rand);
-  color: var(--akzent);
 }
 
 
@@ -765,156 +631,402 @@ textarea {
   display: block;
   width: 100%;
   padding: 8px;
-  font-size: 22px;
+  font-size: 20px;
   line-height: 1;
-  color: var(--akzent);
+  color: var(--text-leise);
   background: none;
-  border: 1px dashed var(--akzent);
+  border: 1px dashed var(--rand);
 }
 
-/* Archiv: jeder frühere Tag ein aufklappbarer Kasten */
+/* Archiv: jeder frühere Tag eine aufklappbare Zeile */
 #tagebuch-archiv {
   color: var(--text-leise);
+  border-top: 1px solid var(--rand);
 }
 
 #tagebuch-archiv details {
-  background: var(--karte);
+  border-bottom: 1px solid var(--rand);
+  padding: 14px 0;
   color: var(--text);
-  border: 1px solid var(--rand);
-  border-radius: 12px;
-  padding: 12px 14px;
-  margin-bottom: 8px;
-}
-
-#tagebuch-archiv summary {
-  cursor: pointer;
 }
 
 #tagebuch-archiv strong {
   display: block;
-  margin-top: 10px;
+  margin-top: 14px;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-leise);
 }
 
 #tagebuch-archiv ul {
   margin: 4px 0;
+  padding-left: 18px;
 }
 
 
-/* ===== Startseite ===== */
-#heute-datum {
-  color: var(--text-leise);
-  margin-top: -8px;
+/* ===== Affirmationen ===== */
+#affirmationen-text {
+  margin-top: 20px;
 }
 
-.heute-kasten {
+#affirmationen-text ul {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+#affirmationen-text li {
+  font-size: 19px;
+  line-height: 1.5;
+  padding: 14px 0;
+  border-bottom: 1px solid var(--rand);
+}
+
+/* Die besondere Zeile („! …“): größer, zwischen zwei Akzent-Linien */
+.hervorgehoben {
+  margin: 28px 0;
+  padding: 20px 4px;
+  font-size: 21px;
+  font-weight: 500;
+  line-height: 1.4;
+  text-align: center;
+  border-top: 1px solid var(--akzent);
+  border-bottom: 1px solid var(--akzent);
+}
+
+#affirmationen-gelesen {
   display: block;
   width: 100%;
-  text-align: left;
-  background: var(--offen);      /* gelblich = noch offen */
-  border: 1px solid var(--offen-rand);
-  border-radius: 14px;
-  padding: 14px 16px;
+  margin-top: 24px;
+  padding: 15px;
+  font-weight: 600;
+  background: var(--text);
+  color: var(--hintergrund);
+}
+
+/* Nach dem Antippen: zurückhaltend */
+#affirmationen-gelesen.fertig {
+  background: var(--flaeche);
+  color: var(--akzent);
+}
+
+/* Aufklapp-Bereich „Affirmationen bearbeiten“ */
+#affirmationen-bearbeiten {
+  margin-top: 24px;
+  border-top: 1px solid var(--rand);
+  padding-top: 14px;
+}
+
+#affirmationen-bearbeiten summary {
+  color: var(--text-leise);
+  font-size: 15px;
+}
+
+
+/* ===== Gym ===== */
+/* Eine Übung = eine ruhige Karte */
+.gym-uebung {
+  background: var(--flaeche);
+  border-radius: 16px;
+  padding: 16px;
+  margin-bottom: 10px;
+}
+
+.gym-uebung strong {
+  display: block;
+  font-weight: 500;
+}
+
+/* Kleine graue Zeile: Gewichtsart */
+.gym-meta {
+  display: block;
+  font-size: 13px;
+  color: var(--text-leise);
+  margin: 2px 0 6px;
+}
+
+/* Hinweis „Gewicht erhöhen / reduzieren“ */
+.gym-tipp {
+  display: block;
+  font-size: 13px;
+  color: var(--akzent);
+  margin: 4px 0 6px;
+}
+
+/* Eine Satz-Zeile: „1 [kg] [Wdh.] [Haken] Zuletzt …“ */
+.gym-satz {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 8px;
+}
+
+.gym-nummer {
+  flex: none;
+  width: 16px;
+  font-size: 13px;
+  color: var(--text-blass);
+}
+
+.gym-satz input {
+  width: 58px;
+  padding: 9px 6px;
+  text-align: center;
+  background: var(--flaeche-hell);
+  border-color: transparent;
+}
+
+/* Vorgefüllter Vorschlag, noch nicht bestätigt: blass */
+.gym-satz input.vorschlag {
+  color: var(--text-blass);
+}
+
+.gym-haken {
+  flex: none;
+  width: 40px;
+  height: 40px;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-leise);
+}
+
+/* Übung zum Abhaken (z. B. Dehnen): Name links, Haken rechts */
+.gym-haken-karte {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+/* Gemachter Satz: Haken im Akzent */
+.gym-satz.gemacht .gym-haken,
+.gym-haken-karte.gemacht .gym-haken {
+  background: var(--akzent);
+  color: var(--akzent-text);
+}
+
+.gym-letztes {
+  flex: 1;
+  font-size: 12px;
+  color: var(--text-blass);
+  text-align: right;
+}
+
+.gym-letztes.besser {
+  color: var(--akzent);
+}
+
+/* Plan bearbeiten: eine Zeile pro Übung mit hoch, runter, Name, ändern, entfernen */
+.gym-edit-zeile {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  border-bottom: 1px solid var(--rand);
+  padding: 6px 0;
+}
+
+.gym-edit-zeile button {
+  flex: none;
+  padding: 10px;
+  background: none;
+  color: var(--text-leise);
+}
+
+.gym-edit-zeile button:disabled {
+  opacity: 0.25;
+  cursor: default;
+}
+
+.gym-edit-name {
+  flex: 1;
+  padding: 0 6px;
+}
+
+/* Formular für eine Übung */
+.gym-edit-form {
+  background: var(--flaeche);
+  border-radius: 16px;
+  padding: 16px;
+  margin: 10px 0;
+}
+
+.gym-edit-form label {
+  display: block;
   margin-bottom: 12px;
 }
 
-.heute-kasten.fertig {
-  background: var(--fertig);     /* grünlich = erledigt */
-  border-color: var(--fertig-rand);
-}
-
-.heute-kasten strong {
+.gym-edit-form label span {
   display: block;
-  font-size: 18px;
+  font-size: 13px;
+  color: var(--text-leise);
+  margin-bottom: 4px;
 }
 
-.heute-kasten ul {
-  margin: 6px 0 0;
-}
-
-/* Neutrale Kästen (Schlafenszeit, Infos aus der Mail): weder gelb noch grün */
-.heute-kasten.neutral {
+.gym-edit-form input,
+.gym-edit-form select {
+  width: 100%;
   box-sizing: border-box;
-  background: var(--karte);
-  border-color: var(--rand);
+  background: var(--flaeche-hell);
+  border-color: transparent;
 }
 
-.heute-kasten.neutral input {
-  padding: 2px 6px;
-  margin: 0 2px;
-}
-
-/* Wochenrückblick */
-#wochenrueckblick {
+.gym-edit-knoepfe {
+  display: flex;
+  gap: 8px;
   margin-top: 4px;
-  padding: 12px 14px;
-  background: var(--karte);
-  border: 1px solid var(--rand);
-  border-radius: 14px;
 }
 
-#wochenrueckblick summary {
-  cursor: pointer;
-  font-size: 18px;
-  font-weight: bold;
+.gym-edit-knoepfe button[type="submit"] {
+  flex: 1;
 }
 
-#wochenrueckblick .tagesleiste {
-  margin-top: 12px;
+/* Fortschritt */
+#gym-fortschritt {
+  margin-top: 20px;
+  border-top: 1px solid var(--rand);
+  padding-top: 18px;
 }
 
-#wochenrueckblick h3 {
-  margin: 16px 0 4px;
+#gym-fortschritt summary {
+  font-size: 17px;
+  font-weight: 500;
 }
 
-#wochenrueckblick ul {
-  margin: 0;
-  padding-left: 20px;
+/* Ring mit Text daneben */
+.gym-ring-zeile {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  margin: 18px 0 8px;
+}
+
+.gym-ring-zeile > div {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  font-size: 14px;
+  color: var(--text-leise);
+}
+
+.gym-ring-zeile strong {
+  font-size: 17px;
+  font-weight: 500;
+  color: var(--text);
+}
+
+.gym-ring {
+  flex: none;
+  width: 88px;
+  height: 88px;
+}
+
+.gym-ring .ring-spur {
+  fill: none;
+  stroke: var(--rand);
+  stroke-width: 6;
+}
+
+.gym-ring .ring-fuellung {
+  fill: none;
+  stroke: var(--akzent);
+  stroke-width: 6;
+  stroke-linecap: round;
+}
+
+.gym-ring .ring-zahl {
+  fill: var(--text);
+  font-size: 20px;
+  font-weight: 500;
+}
+
+/* Gesamtkurve */
+.gym-kurve {
+  width: 100%;
+  height: auto;
+  display: block;
+  margin: 8px 0 0;
+}
+
+.gym-kurve .nulllinie {
+  stroke: var(--rand);
+  stroke-width: 1;
+  stroke-dasharray: 3 4;
+}
+
+.gym-kurve .verlauf {
+  fill: none;
+  stroke: var(--akzent);
+  stroke-width: 1.5;
+  stroke-linejoin: round;
+}
+
+.gym-kurve .achse {
+  fill: var(--text-blass);
+  font-size: 10px;
+}
+
+.gym-kurve .punkt {
+  fill: var(--akzent);
+  stroke: var(--hintergrund);
+  stroke-width: 2;
+}
+
+/* Eine kleine Linie pro Übung: Name | Linie | Prozent */
+.gym-fortschritt-zeile {
+  display: grid;
+  grid-template-columns: 1fr 120px 3.6em;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--rand);
+}
+
+.gym-fortschritt-zeile .wert {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  color: var(--text-leise);
+}
+
+.gym-fortschritt-zeile .wert.minus {
+  color: var(--warnung);
+}
+
+.gym-linie {
+  width: 120px;
+  height: 28px;
+}
+
+.gym-linie .linie {
+  fill: none;
+  stroke: var(--akzent);
+  stroke-width: 1.5;
+  stroke-linejoin: round;
+  stroke-linecap: round;
+}
+
+.gym-linie .linie-punkt {
+  fill: var(--akzent);
 }
 
 
 /* ===== Einstellungen ===== */
-
-/* Überschrift links, Knopf (Zahnrad oder „Fertig“) rechts */
-.kopfzeile {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
+#einstellungen-name {
+  width: 100%;
+  box-sizing: border-box;
 }
 
-.kopfzeile h2 {
-  margin: 0;
-}
-
-.kopfzeile .nebenknopf {
-  margin: 0;
-}
-
-/* Knopf nur mit Symbol, z. B. das Zahnrad */
-.symbolknopf {
-  border: none;
-  background: none;
-  padding: 8px;
-  color: var(--text-leise);
-}
-
-.symbolknopf svg {
-  width: 24px;
-  height: 24px;
-  display: block;
-  fill: none;
-  stroke: currentColor;
-  stroke-width: 1.8;
-  stroke-linecap: round;
-  stroke-linejoin: round;
+.schalter-liste {
+  border-top: 1px solid var(--rand);
 }
 
 /* Eine Zeile: Text links, Schalter oder Eingabe rechts */
 .einstellung-zeile {
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 10px 0;
+  gap: 10px;
+  padding: 12px 0;
   border-bottom: 1px solid var(--rand);
 }
 
@@ -923,30 +1035,68 @@ textarea {
 }
 
 .einstellung-zeile.gesperrt {
-  color: var(--text-leise);
+  color: var(--text-blass);
 }
 
 .einstellung-zeile input[type="number"] {
-  width: 4em;
-  font-size: 16px;
+  width: 3.5em;
+  padding: 8px;
+  text-align: center;
 }
 
 .einstellung-zeile select {
   flex: 1;
-  font-size: 16px;
+  min-width: 0;
 }
 
-#einstellungen-name {
-  width: 100%;
-  box-sizing: border-box;
-  font-size: 16px;
+.einstellung-zeile button:not([type="submit"]) {
+  background: none;
+  padding: 8px;
+  color: var(--text-leise);
 }
 
-/* Schalter: etwas größer, damit man ihn gut trifft */
+/* Schiebeschalter: eigentlich eine Checkbox, nur anders gezeichnet */
 .schalter {
+  -webkit-appearance: none;
+  appearance: none;
+  flex: none;
+  position: relative;
+  width: 46px;
+  height: 28px;
+  margin: 0;
+  padding: 0;
+  border: none;
+  border-radius: 14px;
+  background: var(--rand);
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+/* Der runde Knopf im Schalter */
+.schalter::before {
+  content: "";
+  position: absolute;
+  top: 3px;
+  left: 3px;
   width: 22px;
   height: 22px;
-  accent-color: var(--akzent);
+  border-radius: 50%;
+  background: var(--text-leise);
+  transition: transform 0.2s, background 0.2s;
+}
+
+.schalter:checked {
+  background: var(--akzent);
+}
+
+.schalter:checked::before {
+  transform: translateX(18px);   /* nach rechts = an */
+  background: var(--hintergrund);
+}
+
+.schalter:disabled {
+  opacity: 0.35;
+  cursor: default;
 }
 
 

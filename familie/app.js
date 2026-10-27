@@ -65,6 +65,30 @@ function eintragsListe(eintraege) {
   return liste;
 }
 
+// Feine Linien-Symbole statt Emojis. Jedes ist ein kleiner SVG-Pfad (Zeichenanweisung)
+// auf einem 24 × 24 großen Raster: M = Stift hinsetzen, l/L = Linie ziehen, z = schließen.
+const SYMBOLE = {
+  haken: "M5 12.5l4.5 4.5L19 7.5",
+  kreuz: "M6 6l12 12M18 6L6 18",
+  stift: "M4 20h4L19 9l-4-4L4 16z",
+  stern: "M12 3.5l2.6 5.3 5.9.9-4.3 4.1 1 5.8L12 16.9l-5.2 2.7 1-5.8L3.5 9.7l5.9-.9z",
+  hoch: "M6 15l6-6 6 6",
+  runter: "M6 9l6 6 6-6"
+};
+
+// Baut ein Symbol als Element, z. B. symbol("haken")
+function symbol(name) {
+  const ns = "http://www.w3.org/2000/svg"; // SVG-Elemente brauchen diesen „Namensraum“
+  const svg = document.createElementNS(ns, "svg");
+  svg.setAttribute("viewBox", "0 0 24 24");
+  svg.setAttribute("class", "symbol");
+  svg.setAttribute("aria-hidden", "true");
+  const pfad = document.createElementNS(ns, "path");
+  pfad.setAttribute("d", SYMBOLE[name]);
+  svg.append(pfad);
+  return svg;
+}
+
 
 // ===== Gewählter Tag (Datumsleiste) =====
 // Habits und Tagebuch zeigen den „gewählten Tag“ – normalerweise heute.
@@ -122,8 +146,6 @@ for (const knopf of document.querySelectorAll(".zu-heute")) {
 //   "mindest-habits":    ids der Habits, die für „Tag geschafft“ zählen, z. B. ["p1730000000000"]
 // Am Anfang gibt es keine Habits – jede Person legt ihre eigenen an.
 
-// Was zeigt ein Habit je nach Zustand an?
-const HABIT_SYMBOL = { "x": "✓", "/": "½", "": "" };
 
 function ladeHabits() {
   return laden("checkliste-punkte", []);
@@ -185,7 +207,9 @@ function zeigeHabits() {
 
     const kaestchen = document.createElement("span");
     kaestchen.className = "kaestchen";
-    kaestchen.textContent = HABIT_SYMBOL[zustand];
+    // Erledigt: Haken, teilweise: ½, sonst leer
+    if (zustand === "x") kaestchen.append(symbol("haken"));
+    if (zustand === "/") kaestchen.textContent = "½";
 
     knopf.append(kaestchen, habit.name);
     knopf.addEventListener("click", function () {
@@ -195,18 +219,19 @@ function zeigeHabits() {
       zeigeHabits();
     });
 
-    // Knöpfe ★, ✏️ und ✕ (nur sichtbar im Bearbeiten-Modus)
-    // ★ = Mindest-Habit: zählt dafür, dass der Tag auf der Startseite als geschafft gilt
+    // Knöpfe Stern, Stift und Kreuz (nur sichtbar im Bearbeiten-Modus)
+    // Stern = Mindest-Habit: zählt dafür, dass der Tag auf der Startseite als geschafft gilt
     const mindestKnopf = document.createElement("button");
-    mindestKnopf.textContent = mindest.includes(habit.id) ? "★" : "☆";
+    mindestKnopf.append(symbol("stern"));
     mindestKnopf.title = "Mindest-Habit";
     mindestKnopf.className = "bearbeiten";
+    if (mindest.includes(habit.id)) mindestKnopf.classList.add("an"); // gefüllter Stern
     mindestKnopf.addEventListener("click", function () {
       schalteMindestHabit(habit.id);
     });
 
     const umbenennenKnopf = document.createElement("button");
-    umbenennenKnopf.textContent = "✏️";
+    umbenennenKnopf.append(symbol("stift"));
     umbenennenKnopf.title = "Umbenennen";
     umbenennenKnopf.className = "bearbeiten";
     umbenennenKnopf.addEventListener("click", function () {
@@ -214,7 +239,7 @@ function zeigeHabits() {
     });
 
     const entfernenKnopf = document.createElement("button");
-    entfernenKnopf.textContent = "✕";
+    entfernenKnopf.append(symbol("kreuz"));
     entfernenKnopf.title = "Entfernen";
     entfernenKnopf.className = "bearbeiten";
     entfernenKnopf.addEventListener("click", function () {
@@ -475,7 +500,7 @@ function zeigeAffirmationen() {
 
   const gelesen = habitTag(heute())["affirmationen"] === "x";
   const knopf = document.getElementById("affirmationen-gelesen");
-  knopf.textContent = gelesen ? "Heute gelesen ✓ – schön!" : "Heute gelesen ✓";
+  knopf.textContent = gelesen ? "Heute gelesen – schön!" : "Heute gelesen";
   knopf.classList.toggle("fertig", gelesen);
 }
 
@@ -650,7 +675,7 @@ function zeigeGym() {
   const tag = laden("gym", {})[gewaehlterTag] || { saetze: {} };
 
   // Bearbeiten-Knopf
-  document.getElementById("gym-bearbeiten-knopf").textContent = gymBearbeiten ? "Fertig" : "✏️ Plan bearbeiten";
+  document.getElementById("gym-bearbeiten-knopf").textContent = gymBearbeiten ? "Fertig" : "Plan bearbeiten";
 
   const liste = document.getElementById("gym-uebungen");
   liste.innerHTML = "";
@@ -737,7 +762,7 @@ function gymHakenKarte(uebung, tag) {
   const haken = document.createElement("button");
   haken.type = "button";
   haken.className = "gym-haken";
-  haken.textContent = "✓";
+  haken.append(symbol("haken"));
   haken.title = "Gemacht";
 
   function aktualisiere() {
@@ -787,7 +812,7 @@ function gymSatzZeile(uebung, nr, tag, vorher) {
   const haken = document.createElement("button");
   haken.type = "button";
   haken.className = "gym-haken";
-  haken.textContent = "✓";
+  haken.append(symbol("haken"));
   haken.title = "Satz gemacht";
   haken.addEventListener("click", beiHaken);
 
@@ -871,10 +896,10 @@ function zeigeGymBearbeiten(plan, einheit) {
     const zeile = document.createElement("div");
     zeile.className = "gym-edit-zeile";
 
-    const knopf = function (text, titel, aktion, gesperrt) {
+    const knopf = function (symbolName, titel, aktion, gesperrt) {
       const k = document.createElement("button");
       k.type = "button";
-      k.textContent = text;
+      k.append(symbol(symbolName));
       k.title = titel;
       k.disabled = Boolean(gesperrt);
       k.addEventListener("click", aktion);
@@ -885,11 +910,11 @@ function zeigeGymBearbeiten(plan, einheit) {
     name.textContent = uebung.name;
 
     zeile.append(
-      knopf("▲", "Nach oben", function () { verschiebeGymUebung(einheit, uebung.id, -1); }, i === 0),
-      knopf("▼", "Nach unten", function () { verschiebeGymUebung(einheit, uebung.id, 1); }, i === uebungen.length - 1),
+      knopf("hoch", "Nach oben", function () { verschiebeGymUebung(einheit, uebung.id, -1); }, i === 0),
+      knopf("runter", "Nach unten", function () { verschiebeGymUebung(einheit, uebung.id, 1); }, i === uebungen.length - 1),
       name,
-      knopf("✏️", "Ändern", function () { gymEditId = uebung.id; zeigeGym(); }),
-      knopf("✕", "Entfernen", function () { entferneGymUebung(einheit, uebung.id); })
+      knopf("stift", "Ändern", function () { gymEditId = uebung.id; zeigeGym(); }),
+      knopf("kreuz", "Entfernen", function () { entferneGymUebung(einheit, uebung.id); })
     );
     liste.append(zeile);
   });
@@ -1175,7 +1200,7 @@ function zeigeGymFortschritt() {
   if (daten.punkte.length === 0) {
     const leer = document.createElement("p");
     leer.className = "hinweis";
-    leer.textContent = "Sobald du Sätze mit ✓ bestätigt hast, siehst du hier deinen Fortschritt.";
+    leer.textContent = "Sobald du Sätze mit dem Haken bestätigt hast, siehst du hier deinen Fortschritt.";
     inhalt.append(leer);
     return;
   }
@@ -1225,10 +1250,14 @@ function heuteKasten(titel, text, eintraege, zielBereich, fertig) {
   }
 
   const ueberschrift = document.createElement("strong");
-  ueberschrift.textContent = (fertig ? "✅ " : "⏳ ") + titel;
+  ueberschrift.textContent = titel;
   const beschreibung = document.createElement("span");
   beschreibung.textContent = text;
-  kasten.append(ueberschrift, beschreibung, eintragsListe(eintraege));
+  // Kreis rechts: leer = offen, gefüllt mit Haken = erledigt (Aussehen im CSS)
+  const status = document.createElement("span");
+  status.className = "status";
+  if (fertig) status.append(symbol("haken"));
+  kasten.append(ueberschrift, status, beschreibung, eintragsListe(eintraege));
 
   kasten.addEventListener("click", function () {
     zeigeBereich(zielBereich);
@@ -1334,7 +1363,7 @@ function schlafKasten() {
   kasten.className = "heute-kasten neutral";
 
   const ueberschrift = document.createElement("strong");
-  ueberschrift.textContent = "😴 Schlafenszeit";
+  ueberschrift.textContent = "Schlafenszeit";
   const text = document.createElement("span");
   text.textContent = "Licht aus um ca. " + lichtAus(wecker) + " (Wecker ";
 
@@ -1706,7 +1735,7 @@ function zeigeSportEinstellungen() {
     proWoche.textContent = "× pro Woche";
     const entfernen = document.createElement("button");
     entfernen.type = "button";
-    entfernen.textContent = "✕";
+    entfernen.append(symbol("kreuz"));
     entfernen.title = "Ziel entfernen";
     entfernen.addEventListener("click", function () {
       aendereSportZiel(ziel.id, null);
