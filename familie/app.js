@@ -119,58 +119,30 @@ for (const knopf of document.querySelectorAll(".zu-heute")) {
 //   "habits-tage":       Stand pro Tag, z. B. { "2026-10-16": { lesen: "x", dehnen: "/" } }
 //                        "x" = erledigt, "/" = teilweise, fehlt = nicht gemacht
 //   "happy":             Glücks-Rating pro Tag, z. B. { "2026-10-16": 7.5 }
-
-const HABIT_VORLAGE = [
-  { id: "aufstehen", name: "Aufstehen 8:00" },
-  { id: "affirmationen", name: "Affirmationen" },
-  { id: "fruehstueck", name: "Frühstück" },
-  { id: "lernen", name: "1 h Lernen" },
-  { id: "kein-handy", name: "Kein Handy 1 h nach Aufstehen" },
-  { id: "mittagessen", name: "Mittagessen" },
-  { id: "abendessen", name: "Abendessen" },
-  { id: "reflektieren", name: "Reflektieren" },
-  { id: "achtsamkeit", name: "Achtsamkeit" },
-  { id: "dehnen", name: "Dehnen/Haltung" },
-  { id: "lesen", name: "Lesen" },
-  { id: "sozial", name: "Sozial" },
-  { id: "medikamente", name: "Medikamente" },
-  { id: "schiene", name: "Schiene" },
-  { id: "laufen", name: "Laufen" },
-  { id: "schwimmen", name: "Schwimmen" },
-  { id: "krafttraining", name: "Krafttraining" }
-];
-
-// Einmalige Umstellung: die alten Startpunkte (Sport, Mahlzeiten, Dehnen) durch die
-// Vorlage ersetzen. Selbst hinzugefügte Punkte (id beginnt mit "p") bleiben erhalten.
-if (!laden("habits-vorlage-eingerichtet", false)) {
-  const altePunkte = laden("checkliste-punkte", []);
-  const eigene = altePunkte.filter(function (p) { return p.id.startsWith("p"); });
-  speichern("checkliste-punkte", HABIT_VORLAGE.concat(eigene));
-  speichern("habits-vorlage-eingerichtet", true);
-  speichern("habits-morgen-ergaenzt", true); // die Vorlage enthält die Morgen-Habits schon
-}
-
-// Einmalige Ergänzung (16.10.2026): „Aufstehen 8:00“ ganz oben und „1 h Lernen“
-// nach „Frühstück“ einfügen – für alle, die die Vorlage schon vorher hatten.
-if (!laden("habits-morgen-ergaenzt", false)) {
-  const habits = laden("checkliste-punkte", HABIT_VORLAGE);
-  const hat = function (id) { return habits.some(function (h) { return h.id === id; }); };
-  if (!hat("aufstehen")) {
-    habits.unshift({ id: "aufstehen", name: "Aufstehen 8:00" }); // unshift = vorne einfügen
-  }
-  if (!hat("lernen")) {
-    const nachFruehstueck = habits.findIndex(function (h) { return h.id === "fruehstueck"; }) + 1;
-    habits.splice(nachFruehstueck, 0, { id: "lernen", name: "1 h Lernen" }); // splice = an Stelle einfügen
-  }
-  speichern("checkliste-punkte", habits);
-  speichern("habits-morgen-ergaenzt", true);
-}
+//   "mindest-habits":    ids der Habits, die für „Tag geschafft“ zählen, z. B. ["p1730000000000"]
+// Am Anfang gibt es keine Habits – jede Person legt ihre eigenen an.
 
 // Was zeigt ein Habit je nach Zustand an?
 const HABIT_SYMBOL = { "x": "✓", "/": "½", "": "" };
 
 function ladeHabits() {
-  return laden("checkliste-punkte", HABIT_VORLAGE);
+  return laden("checkliste-punkte", []);
+}
+
+// Nur ids, deren Habit es noch gibt
+function ladeMindestHabits() {
+  const ids = ladeHabits().map(function (h) { return h.id; });
+  return laden("mindest-habits", []).filter(function (id) { return ids.includes(id); });
+}
+
+// Markiert ein Habit als Mindest-Habit oder nimmt die Markierung zurück
+function schalteMindestHabit(id) {
+  const mindest = ladeMindestHabits();
+  const neu = mindest.includes(id)
+    ? mindest.filter(function (m) { return m !== id; })
+    : mindest.concat(id);
+  speichern("mindest-habits", neu);
+  zeigeHabits();
 }
 
 // Gibt den Stand eines Tages zurück, z. B. { lesen: "x" } (leer, wenn noch nichts da)
@@ -196,8 +168,13 @@ function zeigeHabits() {
   const tag = habitTag(gewaehlterTag);
   const liste = document.getElementById("habit-liste");
   liste.innerHTML = "";
+  const habits = ladeHabits();
+  const mindest = ladeMindestHabits();
 
-  for (const habit of ladeHabits()) {
+  // Noch leer: kurzer Hinweis statt einer leeren Liste
+  document.getElementById("habits-leer").classList.toggle("versteckt", habits.length > 0);
+
+  for (const habit of habits) {
     const zustand = tag[habit.id] || "";
 
     // Der ganze Eintrag ist ein Knopf: jeder Tipp schaltet weiter
@@ -218,7 +195,16 @@ function zeigeHabits() {
       zeigeHabits();
     });
 
-    // Knöpfe ✏️ und ✕ (nur sichtbar im Bearbeiten-Modus)
+    // Knöpfe ★, ✏️ und ✕ (nur sichtbar im Bearbeiten-Modus)
+    // ★ = Mindest-Habit: zählt dafür, dass der Tag auf der Startseite als geschafft gilt
+    const mindestKnopf = document.createElement("button");
+    mindestKnopf.textContent = mindest.includes(habit.id) ? "★" : "☆";
+    mindestKnopf.title = "Mindest-Habit";
+    mindestKnopf.className = "bearbeiten";
+    mindestKnopf.addEventListener("click", function () {
+      schalteMindestHabit(habit.id);
+    });
+
     const umbenennenKnopf = document.createElement("button");
     umbenennenKnopf.textContent = "✏️";
     umbenennenKnopf.title = "Umbenennen";
@@ -236,7 +222,7 @@ function zeigeHabits() {
     });
 
     const zeile = document.createElement("li");
-    zeile.append(knopf, umbenennenKnopf, entfernenKnopf);
+    zeile.append(knopf, mindestKnopf, umbenennenKnopf, entfernenKnopf);
     liste.append(zeile);
   }
 
@@ -245,7 +231,10 @@ function zeigeHabits() {
 
 function fuegeHabitHinzu(name) {
   const habits = ladeHabits();
-  habits.push({ id: "p" + Date.now(), name: name }); // Date.now() = eindeutige Zahl
+  // Date.now() = Millisekunden seit 1970; falls die id schon vergeben ist, eins weiterzählen
+  let zahl = Date.now();
+  while (habits.some(function (h) { return h.id === "p" + zahl; })) zahl++;
+  habits.push({ id: "p" + zahl, name: name });
   speichern("checkliste-punkte", habits);
   zeigeHabits();
 }
@@ -317,147 +306,6 @@ document.getElementById("happy-regler").addEventListener("input", function () {
 });
 
 
-// ===== Verlauf importieren =====
-// Liest die Tabelle aus der Notizen-App: erste Zeile = Daten (16.10. 15.10. …),
-// jede weitere Zeile = Habit-Name und dann ein Feld pro Tag (x, / oder leer).
-// Die Zeile „rating happy“ wird zum Glücks-Rating.
-
-// Name vereinfachen, damit „kein handy 1h …“ und „Kein Handy 1 h …“ gleich sind
-function vereinfacheName(name) {
-  return name.toLowerCase().replace(/[^a-z0-9äöüß]/g, "");
-}
-
-// Wandelt die Datumszeile in echte Daten um. Das Jahr fehlt in der Tabelle, darum:
-// Wir starten beim aktuellen Jahr und gehen rückwärts; springt der Monat nach oben
-// (z. B. von Januar zu Dezember), sind wir im Vorjahr. Kaputte Einträge wie „24.0“
-// werden als „ein Tag vor dem vorherigen“ gelesen.
-function leseDaten(zellen) {
-  const daten = [];
-  let jahr = new Date().getFullYear();
-  let vorheriges = null;
-
-  for (const zelle of zellen) {
-    const teile = zelle.trim().split(".");
-    const tag = Number(teile[0]);
-    const monat = Number(teile[1]);
-    let datum;
-
-    if (tag >= 1 && tag <= 31 && monat >= 1 && monat <= 12) {
-      if (vorheriges && monat > vorheriges.getMonth() + 1) {
-        jahr = jahr - 1;
-      }
-      datum = new Date(jahr, monat - 1, tag);
-    } else if (vorheriges) {
-      datum = new Date(vorheriges);
-      datum.setDate(datum.getDate() - 1);
-    } else {
-      datum = new Date();
-    }
-
-    daten.push(datumAlsText(datum));
-    vorheriges = datum;
-  }
-  return daten;
-}
-
-// Zerlegt den eingefügten Text. Ergebnis: { tage, habits: [{ name, werte }], happy }
-function leseTabelle(text) {
-  const zeilen = text.split("\n").filter(function (z) { return z.trim() !== ""; });
-  const kopf = zeilen[0].split("\t").filter(function (z) { return z.trim() !== ""; });
-  const tage = leseDaten(kopf);
-
-  const habits = [];
-  const happy = {};
-
-  for (const zeile of zeilen.slice(1)) {
-    const zellen = zeile.split("\t");
-    const name = zellen[0].trim();
-    const felder = zellen.slice(1); // ein Feld pro Tag, gleiche Reihenfolge wie die Daten
-
-    if (vereinfacheName(name).startsWith("rating")) {
-      tage.forEach(function (datum, i) {
-        const zahl = parseFloat((felder[i] || "").replace(",", "."));
-        if (zahl >= 0 && zahl <= 10) {
-          happy[datum] = zahl;
-        }
-      });
-      continue;
-    }
-
-    const werte = {};
-    tage.forEach(function (datum, i) {
-      const feld = (felder[i] || "").toLowerCase();
-      if (feld.includes("/")) {
-        werte[datum] = "/";
-      } else if (feld.includes("x")) {
-        werte[datum] = "x"; // auch „xx“ zählt als erledigt
-      }
-    });
-    habits.push({ name: name, werte: werte });
-  }
-
-  return { tage: tage, habits: habits, happy: happy };
-}
-
-let importErgebnis = null; // merkt sich das Ergebnis zwischen „Prüfen“ und „Übernehmen“
-
-document.getElementById("import-pruefen").addEventListener("click", function () {
-  const vorschau = document.getElementById("import-vorschau");
-  const uebernehmen = document.getElementById("import-uebernehmen");
-  try {
-    importErgebnis = leseTabelle(document.getElementById("import-text").value);
-    const t = importErgebnis.tage;
-    vorschau.textContent =
-      t.length + " Tage (" + langesDatum(t[t.length - 1]) + " bis " + langesDatum(t[0]) + "), " +
-      importErgebnis.habits.length + " Habits und " +
-      Object.keys(importErgebnis.happy).length + " Ratings erkannt. " +
-      "Schon in der App eingetragene Werte bleiben erhalten.";
-    uebernehmen.classList.remove("versteckt");
-  } catch (fehler) {
-    vorschau.textContent = "Das konnte ich nicht lesen. Hast du die ganze Tabelle mit Datumszeile kopiert?";
-    uebernehmen.classList.add("versteckt");
-  }
-});
-
-document.getElementById("import-uebernehmen").addEventListener("click", function () {
-  const habits = ladeHabits();
-  const alleTage = laden("habits-tage", {});
-  const happy = laden("happy", {});
-
-  for (const importiert of importErgebnis.habits) {
-    // Passendes Habit suchen – oder neu anlegen, falls es den Namen noch nicht gibt
-    let habit = habits.find(function (h) {
-      return vereinfacheName(h.name) === vereinfacheName(importiert.name);
-    });
-    if (!habit) {
-      habit = { id: "p" + Date.now() + habits.length, name: importiert.name };
-      habits.push(habit);
-    }
-
-    for (const datum in importiert.werte) {
-      alleTage[datum] = alleTage[datum] || {};
-      if (!alleTage[datum][habit.id]) { // App-Einträge haben Vorrang
-        alleTage[datum][habit.id] = importiert.werte[datum];
-      }
-    }
-  }
-
-  for (const datum in importErgebnis.happy) {
-    if (happy[datum] === undefined) {
-      happy[datum] = importErgebnis.happy[datum];
-    }
-  }
-
-  speichern("checkliste-punkte", habits);
-  speichern("habits-tage", alleTage);
-  speichern("happy", happy);
-
-  document.getElementById("import-vorschau").textContent = "Fertig importiert ✓";
-  document.getElementById("import-uebernehmen").classList.add("versteckt");
-  document.getElementById("import-text").value = "";
-  zeigeHabits();
-});
-
 zeigeHabits();
 
 
@@ -474,23 +322,6 @@ const TAGEBUCH_MIN_GELEISTET = 2;
 // Ein leerer Tag: je ein leeres Feld
 function leererTagebuchTag() {
   return { dankbar: [""], fuerMich: [""] };
-}
-
-// Einmalige Aufräumaktion: Alte Einträge hatten immer drei Felder, auch leere.
-// Leere Felder am Ende fallen weg (ein Feld bleibt immer stehen).
-if (!laden("tagebuch-bereinigt", false)) {
-  const tagebuch = laden("tagebuch", {});
-  for (const datum in tagebuch) {
-    for (const art of ["dankbar", "fuerMich"]) {
-      const liste = tagebuch[datum][art] || [""];
-      while (liste.length > 1 && liste[liste.length - 1].trim() === "") {
-        liste.pop();
-      }
-      tagebuch[datum][art] = liste;
-    }
-  }
-  speichern("tagebuch", tagebuch);
-  speichern("tagebuch-bereinigt", true);
 }
 
 // Baut die Felder für den gewählten Tag auf (so viele, wie Einträge gespeichert sind)
@@ -664,12 +495,11 @@ zeigeAffirmationen();
 
 
 // ===== Gym =====
-// Zwei Einheiten im Wechsel, jeweils Mo/Mi/Fr: Gym A (Push + Beine) und Gym B (Pull + Beine).
+// Ein Trainingsplan, am Anfang leer. Übungen legt man selbst an (✏️ Plan bearbeiten).
 //
-// Der PLAN liegt auf dem Handy unter "gym-plan" und lässt sich in der App ändern (✏️).
-// Im Code steht nur eine Standard-Vorlage mit Übungsnamen, keine Gewichte, denn der Code
-// ist öffentlich. Gewichte kommen über den Import oder die Eingabe in der App.
-//   gym-plan = { A: { name, untertitel, uebungen: [{ id, name, einheit, start }] }, B: { … } }
+// Der PLAN liegt auf dem Handy unter "gym-plan":
+//   gym-plan = { A: { name, untertitel, uebungen: [{ id, name, einheit, start }] } }
+// (Der Plan heißt intern „A“ – so bleibt Platz, falls später mehrere Pläne dazukommen.)
 // "einheit" ist die Gewichtsart: "kg", "kg je Hand", "kg Scheiben gesamt", "nur Wdh." oder
 // "nur abhaken" (z. B. Dehnen: kein Gewicht, nur ein Haken pro Training).
 //
@@ -678,43 +508,15 @@ zeigeAffirmationen();
 //                     haken: { dehnen: true } } }
 // Ein Satz zählt als gemacht, sobald er gespeichert ist (✓ getippt oder ein Wert geändert).
 
-const GYM_START = "2026-10-26";      // Montag der Woche 1
-const GYM_BLOCK_WOCHEN = 4;          // nach 4 Wochen erinnert die App ans Überprüfen des Plans
-const GYM_PRO_WOCHE = 3;             // Mo, Mi, Fr
+const GYM_PRO_WOCHE = 2;             // Ziel für den Wochen-Ring
 const GYM_SAETZE = 2;
 const GYM_WDH_MIN = 6;               // darunter: Gewicht reduzieren
 const GYM_WDH_ZIEL = 10;             // 2× so viele: Gewicht erhöhen
-const GYM_EINHEITEN = ["A", "B"];
+const GYM_EINHEITEN = ["A"];
 const GYM_KG_ARTEN = ["kg", "kg je Hand", "kg Scheiben gesamt", "nur Wdh.", "nur abhaken"];
 
-function gymUebung(id, name, kgArt) {
-  return { id: id, name: name, einheit: kgArt || "kg", start: null };
-}
-
 const GYM_STANDARD_PLAN = {
-  A: { name: "Gym A", untertitel: "Push + Beine", uebungen: [
-    gymUebung("beinpresse", "Beinpresse"),
-    gymUebung("hip-thrust", "Hip Thrust", "kg Scheiben gesamt"),
-    gymUebung("beinstrecker", "Beinstrecker"),
-    gymUebung("brustpresse", "Brustpresse"),
-    gymUebung("schulterpresse", "Schulterpresse (Kurzhanteln)", "kg je Hand"),
-    gymUebung("seitheben", "Seitheben", "kg je Hand"),
-    gymUebung("trizeps-kabel", "Trizepsdrücken (Kabel)"),
-    gymUebung("pec-fly", "Pec Fly"),
-    gymUebung("dehnen", "Dehnen", "nur abhaken")
-  ] },
-  B: { name: "Gym B", untertitel: "Pull + Beine", uebungen: [
-    gymUebung("beinbeuger", "Beinbeuger (Prone Leg Curl)"),
-    gymUebung("huefte-abduktion", "Hüftabduktion"),
-    gymUebung("huefte-adduktion", "Hüftadduktion"),
-    gymUebung("wadenheben", "Wadenheben"),
-    gymUebung("latzug", "Latzug"),
-    gymUebung("seated-row", "Seated Row"),
-    gymUebung("rear-delt", "Rear Delt"),
-    gymUebung("incline-curls", "Incline Curls", "kg je Hand"),
-    gymUebung("hammer-curls", "Hammer Curls", "kg je Hand"),
-    gymUebung("dehnen", "Dehnen", "nur abhaken")
-  ] }
+  A: { name: "Training", untertitel: "", uebungen: [] }
 };
 
 let gymBearbeiten = false;   // Plan-bearbeiten-Modus an?
@@ -729,30 +531,8 @@ function speichereGymPlan(plan) {
   speichern("gym-plan", plan);
 }
 
-// Einmalige Ergänzung (26.10.2026): „Dehnen“ als abhakbare Übung am Ende von Gym A und B,
-// auch in einem Plan, der schon auf dem Handy gespeichert ist. Wer Dehnen später löscht,
-// bekommt es nicht wieder zurück.
-if (!laden("gym-dehnen-ergaenzt", false)) {
-  const gespeichert = laden("gym-plan", null);
-  if (gespeichert) {
-    for (const einheit of GYM_EINHEITEN) {
-      const uebungen = gespeichert[einheit].uebungen;
-      if (!uebungen.some(function (u) { return u.id === "dehnen"; })) {
-        uebungen.push(gymUebung("dehnen", "Dehnen", "nur abhaken"));
-      }
-    }
-    speichereGymPlan(gespeichert);
-  }
-  speichern("gym-dehnen-ergaenzt", true);
-}
-
 function gymNurWdh(uebung) {
   return uebung.einheit === "nur Wdh.";
-}
-
-// Ganze Tage zwischen zwei Daten ("2026-10-26", "2026-10-29" → 3)
-function tageZwischen(von, bis) {
-  return Math.round((new Date(bis + "T00:00") - new Date(von + "T00:00")) / 86400000);
 }
 
 // "2026-10-26" → "26.10."
@@ -760,21 +540,9 @@ function punktDatum(datum) {
   return datum.slice(8, 10) + "." + datum.slice(5, 7) + ".";
 }
 
-// Welche Einheit schlägt der Plan für ein Datum vor? Mo/Mi/Fr ab Start, im Wochenwechsel:
-// ungerade Wochen Mo A · Mi B · Fr A, gerade Wochen Mo B · Mi A · Fr B.
-function gymVorschlag(datum) {
-  if (datum < GYM_START) return null;
-  const platz = [0, 2, 4].indexOf(wochentag(datum)); // Mo = 0, Mi = 2, Fr = 4
-  if (platz === -1) return null;
-  const woche = Math.floor(tageZwischen(GYM_START, datum) / 7) + 1;
-  return (woche % 2 === 1 ? ["A", "B", "A"] : ["B", "A", "B"])[platz];
-}
-
-// Die Einheit eines Tages: selbst gewählt, sonst der Vorschlag des Plans (oder keine)
+// Die Einheit eines Tages – es gibt nur den einen Plan
 function gymEinheit(datum) {
-  const eintrag = laden("gym", {})[datum];
-  if (eintrag && GYM_EINHEITEN.includes(eintrag.einheit)) return eintrag.einheit;
-  return gymVorschlag(datum);
+  return "A";
 }
 
 function gymSatzGemacht(satz) {
@@ -837,11 +605,6 @@ function speichereSatz(uebungId, nr, kg, wdh) {
   tag.saetze[uebungId][nr] = { kg: kg, wdh: wdh };
   gym[gewaehlterTag] = tag;
   speichern("gym", gym);
-
-  // Training gemacht → Habit „Krafttraining“ abhaken (nur wenn dort noch nichts steht)
-  if (!habitTag(gewaehlterTag)["krafttraining"]) {
-    setzeHabit(gewaehlterTag, "krafttraining", "x");
-  }
 }
 
 // Nimmt einen Satz wieder zurück (✓ nochmal getippt)
@@ -887,31 +650,21 @@ function zeigeGym() {
   const einheit = gymEinheit(gewaehlterTag);
   const tag = laden("gym", {})[gewaehlterTag] || { saetze: {} };
 
-  // Knöpfe „Gym A“ / „Gym B“
-  for (const knopf of document.querySelectorAll("#gym-einheiten button")) {
-    knopf.textContent = plan[knopf.dataset.einheit].name;
-    knopf.classList.toggle("aktiv", knopf.dataset.einheit === einheit);
-  }
-
-  // Bearbeiten-Knöpfe
+  // Bearbeiten-Knopf
   document.getElementById("gym-bearbeiten-knopf").textContent = gymBearbeiten ? "Fertig" : "✏️ Plan bearbeiten";
-  document.getElementById("gym-import").classList.toggle("versteckt", !gymBearbeiten);
 
   const liste = document.getElementById("gym-uebungen");
   liste.innerHTML = "";
   const hinweis = document.getElementById("gym-hinweis");
 
-  const angezeigt = einheit || (gymBearbeiten ? "A" : null);
-  if (!angezeigt) {
-    hinweis.textContent = "Kein Trainingstag laut Plan (Mo/Mi/Fr ab " + punktDatum(GYM_START) +
-      "). Wähle oben Gym A oder B, wenn du trotzdem trainierst.";
+  if (gymBearbeiten) {
+    hinweis.textContent = "";
+    zeigeGymBearbeiten(plan, einheit);
+  } else if (plan[einheit].uebungen.length === 0) {
+    hinweis.textContent = "Noch keine Übungen. Tippe auf „Plan bearbeiten“, um welche anzulegen.";
   } else {
-    hinweis.textContent = plan[angezeigt].untertitel || "";
-    if (gymBearbeiten) {
-      zeigeGymBearbeiten(plan, angezeigt);
-    } else {
-      zeigeGymUebungen(plan, angezeigt, tag);
-    }
+    hinweis.textContent = "";
+    zeigeGymUebungen(plan, einheit, tag);
   }
   zeigeGymFortschritt();
 }
@@ -972,12 +725,6 @@ function speichereHaken(uebungId, wert) {
   }
   gym[gewaehlterTag] = tag;
   speichern("gym", gym);
-
-  // Dehnen gemacht → auch das Habit „Dehnen/Haltung“ abhaken (nur wenn dort noch nichts steht)
-  if (wert && uebungId === "dehnen" && !habitTag(gewaehlterTag)["dehnen"]) {
-    setzeHabit(gewaehlterTag, "dehnen", "x");
-    zeigeHabits();
-  }
 }
 
 // Eine Übung zum Abhaken: Name links, ✓ rechts
@@ -1107,18 +854,6 @@ function gymSatzZeile(uebung, nr, tag, vorher) {
 
   aktualisiere();
   return zeile;
-}
-
-// Einheit-Knöpfe: Auswahl für den gewählten Tag speichern
-for (const knopf of document.querySelectorAll("#gym-einheiten button")) {
-  knopf.addEventListener("click", function () {
-    const gym = laden("gym", {});
-    const tag = gym[gewaehlterTag] || { saetze: {} };
-    tag.einheit = knopf.dataset.einheit;
-    gym[gewaehlterTag] = tag;
-    speichern("gym", gym);
-    zeigeGym();
-  });
 }
 
 
@@ -1281,109 +1016,6 @@ document.getElementById("gym-bearbeiten-knopf").addEventListener("click", functi
 });
 
 
-// --- Plan und Training importieren ---
-// Der Import-Code (beginnt mit GYMPLAN1.) enthält Plan, Startgewichte und bisherige Trainings.
-// So stehen deine Gewichte nie im öffentlichen Code, sondern kommen nur auf dein Gerät.
-
-// Prüft und säubert den Inhalt des Codes. Wirft einen Fehler, wenn etwas nicht passt.
-function bereinigeGymImport(daten) {
-  if (!daten || daten.v !== 1 || !daten.plan) throw new Error("Kein Gym-Code");
-  const sauber = { plan: {}, training: {} };
-
-  for (const einheit of GYM_EINHEITEN) {
-    const roh = daten.plan[einheit];
-    if (!roh || !Array.isArray(roh.uebungen)) throw new Error("Einheit " + einheit + " fehlt");
-    sauber.plan[einheit] = {
-      name: String(roh.name || "Gym " + einheit),
-      untertitel: String(roh.untertitel || ""),
-      uebungen: roh.uebungen.map(function (u) {
-        if (!u || !u.id || !u.name) throw new Error("Übung ohne Namen");
-        return {
-          id: String(u.id),
-          name: String(u.name),
-          einheit: GYM_KG_ARTEN.includes(u.einheit) ? u.einheit : "kg",
-          start: typeof u.start === "number" ? u.start : null
-        };
-      })
-    };
-  }
-
-  // „Dehnen“ gehört zu jeder Einheit; fehlt es im Code, wird es angehängt
-  for (const einheit of GYM_EINHEITEN) {
-    const uebungen = sauber.plan[einheit].uebungen;
-    if (!uebungen.some(function (u) { return u.id === "dehnen"; })) {
-      uebungen.push(gymUebung("dehnen", "Dehnen", "nur abhaken"));
-    }
-  }
-
-  for (const datum in daten.training || {}) {
-    if (!/^\d{4}-\d{2}-\d{2}$/.test(datum)) continue;
-    const tag = daten.training[datum];
-    const saetze = {};
-    for (const id in tag.saetze || {}) {
-      saetze[id] = tag.saetze[id].map(function (s) {
-        return s && s.wdh > 0 ? { kg: typeof s.kg === "number" ? s.kg : null, wdh: Number(s.wdh) } : null;
-      });
-    }
-    sauber.training[datum] = { einheit: GYM_EINHEITEN.includes(tag.einheit) ? tag.einheit : null, saetze: saetze };
-  }
-  return sauber;
-}
-
-let gymImportErgebnis = null; // merkt sich das Ergebnis zwischen „Prüfen“ und „Übernehmen“
-
-document.getElementById("gym-import-pruefen").addEventListener("click", function () {
-  const meldung = document.getElementById("gym-import-meldung");
-  const uebernehmen = document.getElementById("gym-import-uebernehmen");
-  try {
-    const daten = leseCode(document.getElementById("gym-import-text").value, "GYMPLAN1.");
-    gymImportErgebnis = bereinigeGymImport(daten);
-    const p = gymImportErgebnis.plan;
-    const tage = Object.keys(gymImportErgebnis.training);
-    meldung.textContent = "Erkannt: " + p.A.name + " mit " + p.A.uebungen.length + " Übungen, " +
-      p.B.name + " mit " + p.B.uebungen.length + " Übungen, " + tage.length +
-      (tage.length === 1 ? " Trainingstag" : " Trainingstage") +
-      (tage.length > 0 ? " (" + tage.map(punktDatum).join(", ") + ")" : "") +
-      ". Schon gemachte Sätze in der App bleiben erhalten.";
-    uebernehmen.classList.remove("versteckt");
-  } catch (fehler) {
-    meldung.textContent = "Das konnte ich nicht lesen. Bitte den ganzen Code ab „GYMPLAN1.“ einfügen.";
-    uebernehmen.classList.add("versteckt");
-  }
-});
-
-document.getElementById("gym-import-uebernehmen").addEventListener("click", function () {
-  if (laden("gym-plan", null) && !confirm("Dein bisheriger Plan wird durch den importierten ersetzt. Fortfahren?")) return;
-  speichereGymPlan(gymImportErgebnis.plan);
-
-  const gym = laden("gym", {});
-  for (const datum in gymImportErgebnis.training) {
-    const neu = gymImportErgebnis.training[datum];
-    const tag = gym[datum] || { einheit: neu.einheit, saetze: {} };
-    tag.saetze = tag.saetze || {};
-    tag.einheit = tag.einheit || neu.einheit;
-    for (const id in neu.saetze) {
-      const schonDa = (tag.saetze[id] || []).some(gymSatzGemacht);
-      if (!schonDa) tag.saetze[id] = neu.saetze[id]; // Eigene Einträge in der App haben Vorrang
-    }
-    gym[datum] = tag;
-  }
-  speichern("gym", gym);
-
-  // Importierte Trainingstage haken auch das Habit „Krafttraining“ ab
-  for (const datum in gymImportErgebnis.training) {
-    if (gymTrainiert(datum) && !habitTag(datum)["krafttraining"]) setzeHabit(datum, "krafttraining", "x");
-  }
-
-  document.getElementById("gym-import-meldung").textContent = "Fertig importiert ✓";
-  document.getElementById("gym-import-uebernehmen").classList.add("versteckt");
-  document.getElementById("gym-import-text").value = "";
-  zeigeHabits();
-  zeigeGym();
-  zeigeHeute();
-});
-
-
 // --- Fortschritt: Plan-Ring, Gesamtkurve, Linie pro Übung ---
 // Für jede Übung: Kraftwert beim ersten Training = Startwert (0 %).
 // Gesamtkurve: pro Trainingstag der Durchschnitt aller dort trainierten Übungen in % seit Start.
@@ -1516,23 +1148,18 @@ function zeigeGymFortschritt() {
   const plan = ladeGymPlan();
   const daten = gymFortschrittDaten();
 
-  // 1. Plan-Ring für die aktuelle Woche (Mo–So): x von 3 Einheiten
+  // 1. Ring für die aktuelle Woche (Mo–So): x von GYM_PRO_WOCHE Einheiten
   const wochenStart = montagVon(heute());
   const wochenEnde = verschiebeTag(wochenStart, 6);
   const absolviert = Object.keys(gym).filter(function (d) {
     return d >= wochenStart && d <= wochenEnde && gymTrainiert(d);
   }).length;
-  const wochenNr = heute() < GYM_START ? 0 : Math.floor(tageZwischen(GYM_START, heute()) / 7) + 1;
-
-  // Der 4-Wochen-Block wird nur noch für die Erinnerung „Plan überprüfen“ gebraucht
-  const blockNr = Math.max(0, Math.floor(tageZwischen(GYM_START, heute()) / (7 * GYM_BLOCK_WOCHEN)));
-  const blockStart = verschiebeTag(GYM_START, blockNr * 7 * GYM_BLOCK_WOCHEN);
 
   const ringZeile = document.createElement("div");
   ringZeile.className = "gym-ring-zeile";
   const ringText = document.createElement("div");
   const wocheText = document.createElement("strong");
-  wocheText.textContent = wochenNr === 0 ? "Start am " + punktDatum(GYM_START) : "Woche " + wochenNr;
+  wocheText.textContent = "Diese Woche";
   const zeitraum = document.createElement("span");
   zeitraum.textContent = punktDatum(wochenStart) + " – " + punktDatum(wochenEnde);
   const zaehler = document.createElement("span");
@@ -1545,22 +1172,6 @@ function zeigeGymFortschritt() {
   ringZeile.append(gymRing(absolviert, GYM_PRO_WOCHE), ringText);
   inhalt.append(ringZeile);
 
-  // 2. Nach dem Block: Erinnerung, den Plan zu überprüfen (bis du sie wegtippst)
-  const pruefDatum = verschiebeTag(blockStart, 7 * GYM_BLOCK_WOCHEN - 3); // Freitag der letzten Woche
-  if (heute() >= pruefDatum && laden("gym-review-ok", -1) < blockNr) {
-    const pruefen = document.createElement("p");
-    pruefen.className = "frueherer-tag";
-    pruefen.append(GYM_BLOCK_WOCHEN + " Wochen geschafft: Zeit, den Plan zu überprüfen (✏️ Plan bearbeiten). ");
-    const erledigt = document.createElement("button");
-    erledigt.textContent = "Erledigt";
-    erledigt.addEventListener("click", function () {
-      speichern("gym-review-ok", blockNr);
-      zeigeGymFortschritt();
-    });
-    pruefen.append(erledigt);
-    inhalt.append(pruefen);
-  }
-
   if (daten.punkte.length === 0) {
     const leer = document.createElement("p");
     leer.className = "hinweis";
@@ -1569,23 +1180,20 @@ function zeigeGymFortschritt() {
     return;
   }
 
-  // 3. Gesamtkurve
+  // 2. Gesamtkurve
   const kopf = document.createElement("p");
   kopf.append("Gesamt (Ø aller Übungen): ");
   const zahl = document.createElement("strong");
   zahl.textContent = prozentText(daten.punkte[daten.punkte.length - 1].prozent);
   kopf.append(zahl, " seit Start");
-  const legende = document.createElement("p");
-  legende.className = "hinweis gym-legende";
-  legende.innerHTML = '<span class="punkt-legende A"></span>Gym A <span class="punkt-legende B"></span>Gym B';
-  inhalt.append(kopf, gymKurve(daten.punkte), legende);
+  inhalt.append(kopf, gymKurve(daten.punkte));
 
-  // 4. Eine kleine Linie pro Übung, nach Einheit gruppiert
+  // 3. Eine kleine Linie pro Übung
   for (const einheit of GYM_EINHEITEN) {
     const uebungen = plan[einheit].uebungen.filter(function (u) { return daten.verlauf[u.id]; });
     if (uebungen.length === 0) continue;
     const titel = document.createElement("h3");
-    titel.textContent = plan[einheit].name + (plan[einheit].untertitel ? " · " + plan[einheit].untertitel : "");
+    titel.textContent = "Übungen";
     inhalt.append(titel);
 
     for (const uebung of uebungen) {
@@ -1660,68 +1268,38 @@ function zaehleHabit(id, von, bis) {
 }
 
 
-// --- Morgenroutine-Challenge ---
-const ROUTINE_START = "2026-10-16";
-const ROUTINE_TAGE = 14;
-const ROUTINE_HABITS = ["aufstehen", "affirmationen", "fruehstueck", "lernen"];
-
-function morgenroutineKasten(tagHabits) {
-  // Welcher Tag der Challenge ist heute? (1 bis 14, sonst kein Kasten)
-  const tagNr = Math.round((new Date(heute() + "T00:00") - new Date(ROUTINE_START + "T00:00")) / 86400000) + 1;
-  if (tagNr < 1 || tagNr > ROUTINE_TAGE) return null;
-
-  const habits = ladeHabits();
-  const offen = ROUTINE_HABITS
-    .filter(function (id) { return tagHabits[id] !== "x"; })
-    .map(function (id) {
-      const habit = habits.find(function (h) { return h.id === id; });
-      return habit ? habit.name : id;
-    });
-  if (tagNr === ROUTINE_TAGE) {
-    offen.push("Letzter Tag – kurzer Rückblick: Was behältst du bei?");
-  }
-
-  return heuteKasten(
-    "Morgenroutine – Tag " + tagNr + "/" + ROUTINE_TAGE,
-    offen.length === 0 ? "Alles geschafft" : "Aufstehen 8:00 · Affirmationen · Frühstück · 1 h Lernen",
-    offen,
-    "habits",
-    offen.length === 0
-  );
-}
-
-
 // --- Wochenziele Sport ---
-// Mobility = Habit „Dehnen/Haltung“. Gezählt werden nur volle Häkchen (✓), nicht ½.
-const SPORTZIELE = [
-  { id: "laufen", name: "Laufen", soll: 2 },
-  { id: "krafttraining", name: "Kraft", soll: 1 },
-  { id: "dehnen", name: "Mobility", soll: 2 }
-];
+// Gespeichert unter "sport-ziele": welches Habit wie oft pro Woche, z. B.
+//   [{ id: "p1730000000000", soll: 2 }]
+// Der Name kommt aus dem Habit. Gezählt werden nur volle Häkchen (✓), nicht ½.
+// Am Anfang leer; einstellen lässt es sich in den Einstellungen.
+function ladeSportZiele() {
+  const habits = ladeHabits();
+  // Nur Ziele, deren Habit es noch gibt (gelöschte Habits fallen raus)
+  return laden("sport-ziele", []).filter(function (ziel) {
+    return habits.some(function (h) { return h.id === ziel.id; });
+  }).map(function (ziel) {
+    const habit = habits.find(function (h) { return h.id === ziel.id; });
+    return { id: ziel.id, name: habit.name, soll: ziel.soll };
+  });
+}
 
 // Stand der Sportziele in einer Woche bis zu einem Tag, z. B. [{ name, soll, ist }]
 function sportStand(montag, bis) {
-  return SPORTZIELE.map(function (ziel) {
+  return ladeSportZiele().map(function (ziel) {
     return { name: ziel.name, soll: ziel.soll, ist: zaehleHabit(ziel.id, montag, bis) };
   });
 }
 
+// Kasten „Sport diese Woche“ – null, wenn keine Ziele eingestellt sind
 function sportKasten() {
   const stand = sportStand(montagVon(heute()), heute());
+  if (stand.length === 0) return null;
   const tageUebrig = 7 - wochentag(heute()); // heute mitgezählt, bis Sonntag
 
-  let zeile = stand.map(function (z) {
+  const zeile = stand.map(function (z) {
     return z.name + " " + z.ist + "/" + z.soll + (z.ist >= z.soll ? " (erfüllt)" : "");
   }).join(" · ");
-
-  // Gelaufene Kilometer dieser Woche laut Strava (aus dem neuesten Mail-Code)
-  const code = neuesterAppCode();
-  if (code && code.strava) {
-    const km = code.strava
-      .filter(function (e) { return e.typ === "laufen" && e.datum >= montagVon(heute()); })
-      .reduce(function (summe, e) { return summe + (e.km || 0); }, 0);
-    if (km > 0) zeile += " · " + deutscheZahl(Math.round(km * 10) / 10) + " km (Strava)";
-  }
 
   const hinweise = [];
   for (const z of stand) {
@@ -1792,14 +1370,16 @@ function zeigeWochenrueckblick() {
     "KW " + kalenderwoche(montag) + " · " + kurz(montag) + "–" + kurz(sonntag);
   document.getElementById("woche-vor").disabled = montag === montagVon(heute());
 
-  // Sportziele
-  const sportTitel = document.createElement("h3");
-  sportTitel.textContent = "Sportziele";
+  // Sportziele (nur, wenn welche eingestellt sind)
   const sport = sportStand(montag, bis).map(function (z) {
     const zustand = z.ist >= z.soll ? "erfüllt" : (vorbei ? "verfehlt" : "offen");
     return z.name + ": " + z.ist + "/" + z.soll + " – " + zustand;
   });
-  inhalt.append(sportTitel, eintragsListe(sport));
+  if (sport.length > 0) {
+    const sportTitel = document.createElement("h3");
+    sportTitel.textContent = "Sportziele";
+    inhalt.append(sportTitel, eintragsListe(sport));
+  }
 
   // Happy-Rating: Durchschnitt dieser Woche und der Vorwoche
   const happy = laden("happy", {});
@@ -1862,232 +1442,30 @@ document.getElementById("woche-vor").addEventListener("click", function () {
 });
 
 
-// --- App-Code aus der Mail ---
-// Die Morgen- und Abend-Mail enthalten eine Zeile „TAGESAPP1.…“. Dahinter steckt
-// JSON (Termine, Wetter, Geburtstage, Antwort-Mails, Strava, Wecker), verpackt in
-// Base64 – einer Schreibweise nur aus Buchstaben, Zahlen, - und _, damit es eine
-// einzige Zeile ohne Leerzeichen ist. Gespeichert wird nur auf diesem Gerät.
-// Das genaue Format steht in APP-CODE.md.
-
-// Base64url → normales Base64 → Bytes → Text (UTF-8, damit Umlaute stimmen) → JSON
-function entpacke(code) {
-  let base64 = code.replace(/-/g, "+").replace(/_/g, "/");
-  while (base64.length % 4 !== 0) base64 += "=";
-  const zeichen = atob(base64);
-  const bytes = Uint8Array.from(zeichen, function (z) { return z.charCodeAt(0); });
-  return JSON.parse(new TextDecoder("utf-8", { fatal: true }).decode(bytes));
-}
-
-// Liest eine Code-Zeile mit dem Anfang „praefix“ (z. B. "TAGESAPP1.") aus einem Text.
-// Gibt das JSON-Objekt dahinter zurück oder wirft einen Fehler.
-function leseCode(text, praefix) {
-  // Unsichtbare Zeichen entfernen, die Mail-Apps in lange Wörter einbauen
-  // (weiches Trennzeichen, Null-Breite-Leerzeichen u. Ä.)
-  text = text.replace(/[­​-‍⁠﻿]/g, "").replace(/ /g, " ");
-  const start = text.indexOf(praefix);
-  if (start === -1) throw new Error("Kein Code gefunden");
-
-  // Manche Mail-Apps brechen lange Zeilen um. Darum sammeln wir den Code-Anfang und
-  // die direkt folgenden Zeilen, die nur aus Code-Zeichen bestehen …
-  const zeilen = text.slice(start + praefix.length).split(/\r?\n/);
-  const stuecke = [];
-  for (const zeile of zeilen) {
-    const teil = zeile.trim();
-    if (!/^[A-Za-z0-9_-]+$/.test(teil)) {
-      if (stuecke.length === 0) stuecke.push(teil.match(/^[A-Za-z0-9_-]*/)[0]);
-      break;
-    }
-    stuecke.push(teil);
-  }
-
-  // … und probieren dann von der längsten Variante abwärts, welche sich entpacken lässt.
-  // So stört es nicht, wenn direkt darunter z. B. ein einzelnes Wort steht.
-  for (let anzahl = stuecke.length; anzahl >= 1; anzahl--) {
-    try {
-      return entpacke(stuecke.slice(0, anzahl).join(""));
-    } catch (fehler) {
-      continue; // passt nicht – eine Zeile weniger probieren
-    }
-  }
-  throw new Error("Code beschädigt");
-}
-
-// Liest den App-Code der Morgen-/Abend-Mail
-function leseAppCode(text) {
-  const daten = leseCode(text, "TAGESAPP1.");
-  if (daten.v !== 1 || (daten.art !== "morgen" && daten.art !== "abend")) {
-    throw new Error("Unbekannte Code-Version");
-  }
-  return daten;
-}
-
-// Welches Habit hakt eine Strava-Einheit ab?
-const STRAVA_HABIT = { laufen: "laufen", kraft: "krafttraining", schwimmen: "schwimmen" };
-
-// Speichert den Code und übernimmt Strava-Einheiten und Weckzeit
-function uebernehmeAppCode(daten) {
-  const mail = laden("mail-daten", {});
-  mail[daten.art] = daten;
-  speichern("mail-daten", mail);
-
-  // Strava: Habit für den Tag abhaken – aber nie etwas überschreiben, was du selbst eingetragen hast
-  const alleTage = laden("habits-tage", {});
-  for (const einheit of daten.strava || []) {
-    const id = STRAVA_HABIT[einheit.typ];
-    if (!id || einheit.datum > heute()) continue;
-    alleTage[einheit.datum] = alleTage[einheit.datum] || {};
-    if (!alleTage[einheit.datum][id]) {
-      alleTage[einheit.datum][id] = "x";
-    }
-  }
-  speichern("habits-tage", alleTage);
-
-  // Abends bringt die Mail die passende Weckzeit für morgen mit
-  if (daten.art === "abend" && daten.wecker) {
-    speichern("wecker", daten.wecker);
-  }
-}
-
-// Der neueste Code (morgens oder abends), z. B. für die Strava-Kilometer
-function neuesterAppCode() {
-  const mail = laden("mail-daten", {});
-  const codes = [mail.morgen, mail.abend].filter(Boolean);
-  codes.sort(function (a, b) { return a.erstellt < b.erstellt ? 1 : -1; });
-  return codes[0] || null;
-}
-
-// "2026-10-18" → "Sa., 18.10."
-function kurzesDatum(datum) {
-  return new Date(datum + "T00:00").toLocaleDateString("de-DE", {
-    weekday: "short", day: "2-digit", month: "2-digit"
-  });
-}
-
-// Ein Kasten nur zum Lesen (kein Knopf)
-function infoKasten(titel, text, eintraege) {
-  const kasten = document.createElement("div");
-  kasten.className = "heute-kasten neutral";
-  const ueberschrift = document.createElement("strong");
-  ueberschrift.textContent = titel;
-  const beschreibung = document.createElement("span");
-  beschreibung.textContent = text;
-  kasten.append(ueberschrift, beschreibung, eintragsListe(eintraege));
-  return kasten;
-}
-
-function wetterText(wetter) {
-  if (!wetter) return "";
-  return wetter.ort + ": " + wetter.min + "–" + wetter.max + " °C · Regen " + wetter.regen + " %";
-}
-
-function terminZeilen(termine) {
-  return (termine || []).map(function (t) {
-    const zeit = t.start ? t.start + (t.ende ? "–" + t.ende : "") + " " : "Ganztägig: ";
-    return (t.ueberschneidung ? "Achtung: Überschneidung – " : "") + zeit + t.titel;
-  });
-}
-
-// Kasten „Heute laut Mail“ (Morgen-Code von heute)
-function mailHeuteKasten() {
-  const code = laden("mail-daten", {}).morgen;
-  if (!code || code.fuer !== heute()) return null;
-
-  const zeilen = terminZeilen(code.termine);
-  for (const m of code.antwortMails || []) {
-    zeilen.push("Antworten: " + m.von + " – " + m.betreff);
-  }
-  for (const g of code.geburtstage || []) {
-    zeilen.push("Geburtstag " + kurzesDatum(g.datum) + ": " + g.name);
-  }
-  if (zeilen.length === 0) zeilen.push("Keine Termine heute");
-
-  return infoKasten("📬 Heute laut Mail · Stand " + code.erstellt.slice(11, 16), wetterText(code.wetter), zeilen);
-}
-
-// Kasten „Morgen laut Mail“ (Abend-Code, der sich auf morgen bezieht)
-function mailMorgenKasten() {
-  const code = laden("mail-daten", {}).abend;
-  if (!code || code.fuer !== verschiebeTag(heute(), 1)) return null;
-
-  const zeilen = terminZeilen(code.termine);
-  for (const g of code.geburtstage || []) {
-    zeilen.push("Geburtstag: " + g.name + " – Nachricht oder Geschenk bereit?");
-  }
-  if (zeilen.length === 0) zeilen.push("Keine Termine morgen");
-
-  return infoKasten("🌙 Morgen laut Mail · Stand " + code.erstellt.slice(11, 16), wetterText(code.wetter), zeilen);
-}
-
-// Knopf „Aus Mail einfügen“: erst die Zwischenablage versuchen, sonst ein Textfeld zeigen
-function zeigeMailMeldung(text, istFehler) {
-  const meldung = document.getElementById("mailcode-meldung");
-  meldung.textContent = text;
-  meldung.classList.toggle("fehler", Boolean(istFehler));
-  if (text) {
-    document.activeElement.blur(); // Tastatur schließen, damit die Meldung nicht verdeckt ist
-    meldung.scrollIntoView({ block: "center", behavior: "smooth" });
-  }
-}
-
-function verarbeiteMailText(text) {
-  const daten = leseAppCode(text); // wirft einen Fehler, wenn der Text keinen gültigen Code enthält
-  uebernehmeAppCode(daten);
-  document.getElementById("mailcode-feld").classList.add("versteckt");
-  document.getElementById("mailcode-text").value = "";
-  zeigeMailMeldung("Übernommen ✓ " + (daten.art === "morgen" ? "Morgen" : "Abend") +
-    "-Mail von " + daten.erstellt.slice(11, 16) + " Uhr");
-  zeigeHabits();
-  zeigeHeute();
-}
-
-document.getElementById("mailcode-knopf").addEventListener("click", async function () {
-  try {
-    // Zwischenablage lesen – iOS fragt dabei kurz „Einfügen?“
-    const text = await navigator.clipboard.readText();
-    verarbeiteMailText(text);
-  } catch (fehler) {
-    // Keine Erlaubnis oder kein Code in der Zwischenablage → zum Einfügen per Hand
-    document.getElementById("mailcode-feld").classList.remove("versteckt");
-    zeigeMailMeldung("");
-  }
-});
-
-document.getElementById("mailcode-uebernehmen").addEventListener("click", function () {
-  try {
-    verarbeiteMailText(document.getElementById("mailcode-text").value);
-  } catch (fehler) {
-    const text = document.getElementById("mailcode-text").value;
-    let hinweis;
-    if (text.trim() === "") {
-      hinweis = "Das Feld ist leer. Erst den Code aus der Mail kopieren und hier einfügen.";
-    } else if (!text.includes("TAGESAPP1.")) {
-      hinweis = "Kein App-Code gefunden. Er beginnt mit „TAGESAPP1.“ und steht ganz unten in der Mail unter „📲 APP-CODE“.";
-    } else {
-      hinweis = "Der Code ist unvollständig (" + text.length + " Zeichen eingefügt). Bitte die ganze Zeile ab „TAGESAPP1.“ kopieren.";
-    }
-    zeigeMailMeldung(hinweis, true);
-  }
-});
-
-
 // --- Startseite zusammenbauen ---
 
-// Mindestanforderungen am Tag: Ist all das abgehakt, wird der Habits-Kasten grün.
-const MINDEST_HABITS = ["fruehstueck", "mittagessen", "abendessen", "reflektieren", "medikamente", "affirmationen"];
+// Begrüßung oben: mit Namen, sobald einer eingetragen ist
+function zeigeBegruessung() {
+  const name = laden("name", "");
+  document.getElementById("begruessung").textContent = name ? "Hallo " + name : "Mein Tag";
+  document.getElementById("name-form").classList.toggle("versteckt", name !== "");
+}
+
+// Beim ersten Start: Namen eintragen (später in den Einstellungen änderbar)
+document.getElementById("name-form").addEventListener("submit", function (ereignis) {
+  ereignis.preventDefault();
+  const name = document.getElementById("name-eingabe").value.trim();
+  if (name === "") return;
+  speichern("name", name);
+  zeigeBegruessung();
+});
 
 function zeigeHeute() {
+  zeigeBegruessung();
   document.getElementById("heute-datum").textContent = langesDatum(heute());
   const kaesten = document.getElementById("heute-kaesten");
   kaesten.innerHTML = "";
   const tagHabits = habitTag(heute());
-
-  // 0. Aus der Morgen-Mail: Termine, Wetter, Geburtstage, Antwort-Mails
-  const mailHeute = mailHeuteKasten();
-  if (mailHeute) kaesten.append(mailHeute);
-
-  // 0b. Morgenroutine-Challenge (nur 16.–29.10.)
-  const routine = morgenroutineKasten(tagHabits);
-  if (routine) kaesten.append(routine);
 
   // 1. Affirmationen: heute schon gelesen?
   const gelesen = tagHabits["affirmationen"] === "x";
@@ -2099,35 +1477,36 @@ function zeigeHeute() {
     gelesen
   ));
 
-  // 2. Habits: grün, sobald die Mindestanforderungen erfüllt sind. Alle anderen Habits
-  //    sind eher eine Wochenübersicht und zählen hier nur in der Gesamtzahl mit.
+  // 2. Habits: grün, sobald die Mindest-Habits erfüllt sind. Sind keine als „Mindest“
+  //    markiert, müssen alle Habits abgehakt sein.
   const habits = ladeHabits();
-  const mindest = habits.filter(function (h) { return MINDEST_HABITS.includes(h.id); });
-  const mindestOffen = mindest.filter(function (h) { return tagHabits[h.id] !== "x"; });
-  const gesamtErledigt = habits.filter(function (h) { return tagHabits[h.id] === "x"; }).length;
   const happy = laden("happy", {})[heute()];
-  kaesten.append(heuteKasten(
-    "Habits",
-    "Mindestens " + (mindest.length - mindestOffen.length) + " von " + mindest.length +
-      " · gesamt " + gesamtErledigt + " von " + habits.length +
-      (happy === undefined ? "" : " · Happy: " + deutscheZahl(happy)),
-    mindestOffen.map(function (h) { return tagHabits[h.id] === "/" ? h.name + " (½)" : h.name; }),
-    "habits",
-    mindestOffen.length === 0
-  ));
-
-  // 2b. Gym: an Trainingstagen (Mo/Mi/Fr oder selbst gewählt) – gelb bis eingetragen
-  const einheitHeute = gymEinheit(heute());
-  if (einheitHeute) {
-    const trainiert = gymTrainiert(heute());
-    const gymPlan = ladeGymPlan()[einheitHeute];
+  const happyText = happy === undefined ? "" : " · Happy: " + deutscheZahl(happy);
+  if (habits.length === 0) {
+    kaesten.append(heuteKasten("Habits", "Noch keine Habits angelegt", [], "habits", false));
+  } else {
+    const markiert = ladeMindestHabits();
+    const mindest = markiert.length > 0
+      ? habits.filter(function (h) { return markiert.includes(h.id); })
+      : habits;
+    const mindestOffen = mindest.filter(function (h) { return tagHabits[h.id] !== "x"; });
+    const gesamtErledigt = habits.filter(function (h) { return tagHabits[h.id] === "x"; }).length;
+    const text = markiert.length > 0
+      ? "Mindestens " + (mindest.length - mindestOffen.length) + " von " + mindest.length +
+        " · gesamt " + gesamtErledigt + " von " + habits.length
+      : gesamtErledigt + " von " + habits.length + " erledigt";
     kaesten.append(heuteKasten(
-      "Heute: " + gymPlan.name + (gymPlan.untertitel ? " (" + gymPlan.untertitel + ")" : ""),
-      trainiert ? "Training eingetragen" : "Noch nicht eingetragen",
-      [],
-      "gym",
-      trainiert
+      "Habits",
+      text + happyText,
+      mindestOffen.map(function (h) { return tagHabits[h.id] === "/" ? h.name + " (½)" : h.name; }),
+      "habits",
+      mindestOffen.length === 0
     ));
+  }
+
+  // 2b. Gym: nur wenn heute schon trainiert wurde
+  if (gymTrainiert(heute())) {
+    kaesten.append(heuteKasten("Training", "Heute eingetragen", [], "gym", true));
   }
 
   // 3. Tagebuch: grün, sobald bei „geleistet“ mindestens 2 Einträge stehen (Dankbar = Zusatz)
@@ -2145,18 +1524,15 @@ function zeigeHeute() {
     anzahlFuerMich >= TAGEBUCH_MIN_GELEISTET
   ));
 
-  // 4. Sport diese Woche
-  kaesten.append(sportKasten());
+  // 4. Sport diese Woche (nur, wenn Ziele eingestellt sind)
+  const sport = sportKasten();
+  if (sport) kaesten.append(sport);
 
-  // 5. Aus der Abend-Mail: was morgen ansteht
-  const mailMorgen = mailMorgenKasten();
-  if (mailMorgen) kaesten.append(mailMorgen);
-
-  // 6. Schlafenszeit (ab 17 Uhr)
+  // 5. Schlafenszeit (ab 17 Uhr)
   const schlaf = schlafKasten();
   if (schlaf) kaesten.append(schlaf);
 
-  // 7. Wochenrückblick: immer die aktuelle Woche; sonntags automatisch aufgeklappt
+  // 6. Wochenrückblick: immer die aktuelle Woche; sonntags automatisch aufgeklappt
   rueckblickMontag = montagVon(heute());
   if (wochentag(heute()) === 6) {
     document.getElementById("wochenrueckblick").open = true;
