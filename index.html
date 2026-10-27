@@ -4,7 +4,7 @@
   <!-- Zeichensatz: damit Umlaute (ä, ö, ü) richtig angezeigt werden -->
   <meta charset="UTF-8">
   <!-- Damit die Seite auf dem Handy nicht winzig verkleinert dargestellt wird -->
-  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
   <title>Tages-App</title>
   <!-- Verbindet die Seite mit der Datei für das Aussehen -->
   <link rel="stylesheet" href="style.css">
@@ -15,17 +15,22 @@
   <link rel="apple-touch-icon" href="apple-touch-icon.png">
   <link rel="icon" href="icon-192.png">
   <!-- Farbe der Statusleiste oben auf dem Handy -->
-  <meta name="theme-color" content="#2e7d6b">
+  <meta name="theme-color" content="#000000">
 </head>
 <body>
   <h1>Hi Lars, deine Tages-App :)</h1>
 
   <section id="heute">
-    <h2>Heute</h2>
+    <div class="kopfzeile">
+      <h2>Heute</h2>
+      <button id="einstellungen-knopf" class="symbolknopf" title="Einstellungen" aria-label="Einstellungen">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg>
+      </button>
+    </div>
     <p id="heute-datum"></p>
 
     <!-- App-Code aus der Morgen-/Abend-Mail übernehmen (bleibt nur auf diesem Gerät) -->
-    <button id="mailcode-knopf" class="nebenknopf">📲 Aus Mail einfügen</button>
+    <button id="mailcode-knopf" class="nebenknopf">Aus Mail einfügen</button>
     <p id="mailcode-meldung" class="hinweis"></p>
     <div id="mailcode-feld" class="versteckt">
       <p class="hinweis">Kopiere den App-Code aus der Mail (beginnt mit TAGESAPP1.) und füge ihn hier ein:</p>
@@ -37,7 +42,7 @@
 
     <!-- Wochenrückblick: aufklappbar, sonntags automatisch offen -->
     <details id="wochenrueckblick">
-      <summary>📊 Wochenrückblick</summary>
+      <summary>Wochenrückblick</summary>
       <div class="tagesleiste">
         <button id="woche-zurueck" title="Vorherige Woche">‹</button>
         <span id="woche-anzeige"></span>
@@ -70,7 +75,7 @@
     </div>
 
     <!-- Bearbeiten: Habits hinzufügen, umbenennen, entfernen -->
-    <button id="habits-bearbeiten-knopf" class="nebenknopf">Habits bearbeiten</button>
+    <button id="habits-bearbeiten-knopf" class="nebenknopf bearbeiten-knopf">Habits bearbeiten</button>
     <form id="habit-neu" class="versteckt">
       <input id="habit-neu-name" placeholder="Neues Habit, z. B. Wasser trinken" required>
       <button type="submit">Hinzufügen</button>
@@ -121,7 +126,7 @@
     <h2>Affirmationen</h2>
     <!-- Die Sätze füllt app.js hier automatisch hinein -->
     <div id="affirmationen-text"></div>
-    <button id="affirmationen-gelesen">Heute gelesen ✓</button>
+    <button id="affirmationen-gelesen">Heute gelesen</button>
 
     <!-- Text bearbeiten: wird nur auf diesem Gerät gespeichert -->
     <details id="affirmationen-bearbeiten">
@@ -147,25 +152,18 @@
       Du bearbeitest einen früheren Tag. <button class="zu-heute">Zurück zu heute</button>
     </p>
 
-    <!-- Welche Einheit? Der Plan schlägt sie nach Datum vor (Mo/Mi/Fr, A und B im Wechsel).
-         Die Beschriftung der Knöpfe setzt app.js aus dem Plan. -->
-    <div id="gym-einheiten">
-      <button data-einheit="A">Gym A</button>
-      <button data-einheit="B">Gym B</button>
-    </div>
+    <!-- Auswahl der Einheit (A/B/C), nur bei Split 2 oder 3 sichtbar. Füllt app.js. -->
+    <div id="gym-einheiten" class="segment versteckt"></div>
     <p id="gym-hinweis" class="hinweis"></p>
 
-    <!-- Infofeld: gilt für alle Übungen -->
-    <div class="gym-info">
-      <strong>2 Sätze à 6–10 Wiederholungen · ca. 90 Sek. Satzpause</strong>
-      <span>Vorher: 5–10 min laufen</span>
-    </div>
+    <!-- Infozeile: Sätze und Pause kommen aus den Einstellungen (füllt app.js) -->
+    <p id="gym-info" class="hinweis"></p>
 
     <!-- Die Übungen füllt app.js automatisch -->
     <div id="gym-uebungen"></div>
 
     <!-- Plan ändern: ✏️ ▲ ▼ ✕ und neue Übungen -->
-    <button id="gym-bearbeiten-knopf" class="nebenknopf">✏️ Plan bearbeiten</button>
+    <button id="gym-bearbeiten-knopf" class="nebenknopf bearbeiten-knopf">Plan bearbeiten</button>
 
     <!-- Plan und bisherige Trainings per Code übernehmen (nur im Bearbeiten-Modus sichtbar) -->
     <details id="gym-import" class="versteckt">
@@ -182,9 +180,48 @@
 
     <!-- Fortschritt: Plan-Ring, Gesamtkurve und eine kleine Linie pro Übung -->
     <details id="gym-fortschritt" open>
-      <summary>📈 Fortschritt</summary>
+      <summary>Fortschritt</summary>
       <div id="gym-fortschritt-inhalt"></div>
     </details>
+
+    <!-- Verlauf: frühere Trainings, neuestes zuerst (füllt app.js) -->
+    <details id="gym-verlauf">
+      <summary>Verlauf</summary>
+      <div id="gym-verlauf-inhalt"></div>
+    </details>
+  </section>
+
+  <!-- Pausen-Timer: Leiste unten, erscheint nach jedem ✓ (füllt app.js) -->
+  <div id="pause" class="versteckt">
+    <span id="pause-text"></span>
+    <button id="pause-ueberspringen" type="button">Überspringen</button>
+  </div>
+
+  <!-- Einstellungen: erreichbar über das Zahnrad. Alles wird nur auf diesem Gerät gespeichert. -->
+  <section id="einstellungen">
+    <div class="kopfzeile">
+      <h2>Einstellungen</h2>
+      <button id="einstellungen-fertig" class="nebenknopf bearbeiten-knopf offen">Fertig</button>
+    </div>
+
+    <h3>Split</h3>
+    <div id="einstellungen-gym-split" class="segment"></div>
+    <p id="einstellungen-gym-split-hinweis" class="hinweis"></p>
+
+    <h3>Training</h3>
+    <label class="einstellung-zeile">
+      <span>Trainings pro Woche (Ziel)</span>
+      <input id="einstellungen-gym-ziel" type="number" min="1" max="7" inputmode="numeric">
+    </label>
+    <label class="einstellung-zeile">
+      <span>Sätze pro Übung</span>
+      <input id="einstellungen-gym-saetze" type="number" min="1" max="6" inputmode="numeric">
+    </label>
+    <label class="einstellung-zeile">
+      <span>Pause nach jedem Satz (Sek.)</span>
+      <input id="einstellungen-gym-pause" type="number" min="0" max="600" step="15" inputmode="numeric">
+    </label>
+    <p class="hinweis">0 = kein Pausen-Timer.</p>
   </section>
 
   <!-- Die Symbole sind kleine selbst gezeichnete SVG-Bilder (Linien statt Fotos),

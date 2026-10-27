@@ -61,6 +61,30 @@ function eintragsListe(eintraege) {
 }
 
 
+// Feine Linien-Symbole statt Emojis. Jedes ist ein kleiner SVG-Pfad (Zeichenanweisung)
+// auf einem 24 × 24 großen Raster: M = Stift hinsetzen, l/L = Linie ziehen, z = schließen.
+const SYMBOLE = {
+  haken: "M5 12.5l4.5 4.5L19 7.5",
+  kreuz: "M6 6l12 12M18 6L6 18",
+  stift: "M4 20h4L19 9l-4-4L4 16z",
+  hoch: "M6 15l6-6 6 6",
+  runter: "M6 9l6 6 6-6"
+};
+
+// Baut ein Symbol als Element, z. B. symbol("haken")
+function symbol(name) {
+  const ns = "http://www.w3.org/2000/svg"; // SVG-Elemente brauchen diesen „Namensraum“
+  const svg = document.createElementNS(ns, "svg");
+  svg.setAttribute("viewBox", "0 0 24 24");
+  svg.setAttribute("class", "symbol");
+  svg.setAttribute("aria-hidden", "true");
+  const pfad = document.createElementNS(ns, "path");
+  pfad.setAttribute("d", SYMBOLE[name]);
+  svg.append(pfad);
+  return svg;
+}
+
+
 // ===== Gewählter Tag (Datumsleiste) =====
 // Habits und Tagebuch zeigen den „gewählten Tag“ – normalerweise heute.
 // Mit ‹ und › kann man zurückblättern, um verpasste Tage nachzutragen.
@@ -78,6 +102,10 @@ function tagesName(datum) {
 // Setzt den gewählten Tag und baut Habits und Tagebuch dafür neu auf
 function waehleTag(datum) {
   if (datum > heute()) return; // nicht in die Zukunft
+  if (datum !== gewaehlterTag) {
+    gymAnsicht = null;          // neue Tagesauswahl: wieder die Einheit laut Reihenfolge
+    gymEditId = null;
+  }
   gewaehlterTag = datum;
 
   for (const anzeige of document.querySelectorAll(".tag-anzeige")) {
@@ -161,9 +189,6 @@ if (!laden("habits-morgen-ergaenzt", false)) {
   speichern("habits-morgen-ergaenzt", true);
 }
 
-// Was zeigt ein Habit je nach Zustand an?
-const HABIT_SYMBOL = { "x": "✓", "/": "½", "": "" };
-
 function ladeHabits() {
   return laden("checkliste-punkte", HABIT_VORLAGE);
 }
@@ -203,7 +228,8 @@ function zeigeHabits() {
 
     const kaestchen = document.createElement("span");
     kaestchen.className = "kaestchen";
-    kaestchen.textContent = HABIT_SYMBOL[zustand];
+    if (zustand === "x") kaestchen.append(symbol("haken"));
+    if (zustand === "/") kaestchen.textContent = "½";
 
     knopf.append(kaestchen, habit.name);
     knopf.addEventListener("click", function () {
@@ -213,9 +239,9 @@ function zeigeHabits() {
       zeigeHabits();
     });
 
-    // Knöpfe ✏️ und ✕ (nur sichtbar im Bearbeiten-Modus)
+    // Knöpfe Stift und Kreuz (nur sichtbar im Bearbeiten-Modus)
     const umbenennenKnopf = document.createElement("button");
-    umbenennenKnopf.textContent = "✏️";
+    umbenennenKnopf.append(symbol("stift"));
     umbenennenKnopf.title = "Umbenennen";
     umbenennenKnopf.className = "bearbeiten";
     umbenennenKnopf.addEventListener("click", function () {
@@ -223,7 +249,7 @@ function zeigeHabits() {
     });
 
     const entfernenKnopf = document.createElement("button");
-    entfernenKnopf.textContent = "✕";
+    entfernenKnopf.append(symbol("kreuz"));
     entfernenKnopf.title = "Entfernen";
     entfernenKnopf.className = "bearbeiten";
     entfernenKnopf.addEventListener("click", function () {
@@ -271,7 +297,9 @@ document.getElementById("habits-bearbeiten-knopf").addEventListener("click", fun
   const liste = document.getElementById("habit-liste");
   liste.classList.toggle("bearbeiten-modus");
   document.getElementById("habit-neu").classList.toggle("versteckt");
-  this.textContent = liste.classList.contains("bearbeiten-modus") ? "Fertig" : "Habits bearbeiten";
+  const offen = liste.classList.contains("bearbeiten-modus");
+  this.textContent = offen ? "Fertig" : "Habits bearbeiten";
+  this.classList.toggle("offen", offen);   // Aussehen im CSS: gefüllt, solange man bearbeitet
 });
 
 document.getElementById("habit-neu").addEventListener("submit", function (ereignis) {
@@ -639,7 +667,7 @@ function zeigeAffirmationen() {
 
   const gelesen = habitTag(heute())["affirmationen"] === "x";
   const knopf = document.getElementById("affirmationen-gelesen");
-  knopf.textContent = gelesen ? "Heute gelesen ✓ – schön!" : "Heute gelesen ✓";
+  knopf.textContent = gelesen ? "Heute gelesen – schön!" : "Heute gelesen";
   knopf.classList.toggle("fertig", gelesen);
 }
 
@@ -659,12 +687,16 @@ zeigeAffirmationen();
 
 
 // ===== Gym =====
-// Zwei Einheiten im Wechsel, jeweils Mo/Mi/Fr: Gym A (Push + Beine) und Gym B (Pull + Beine).
+// ===== Gym =====
+// Der Plan startet mit einer Vorlage (nur Übungsnamen, keine Gewichte, denn der Code ist öffentlich).
+// Übungen und Startgewichte ändert man selbst (Plan bearbeiten) oder bringt sie per Import-Code mit.
+// In den Einstellungen (Zahnrad auf „Heute“) wählt man den Split: 1 = Ganzkörper (nur A), 2 = A/B, 3 = A/B/C.
+// Die Einheiten kommen der Reihe nach dran und wiederholen sich: A, B, C, A, B, C …
 //
-// Der PLAN liegt auf dem Handy unter "gym-plan" und lässt sich in der App ändern (✏️).
-// Im Code steht nur eine Standard-Vorlage mit Übungsnamen, keine Gewichte, denn der Code
-// ist öffentlich. Gewichte kommen über den Import oder die Eingabe in der App.
-//   gym-plan = { A: { name, untertitel, uebungen: [{ id, name, einheit, start }] }, B: { … } }
+// Der PLAN liegt auf dem Handy unter "gym-plan":
+//   gym-plan = { A: { name, untertitel, uebungen: [{ id, name, einheit, start }] }, B: …, C: … }
+// Ein leerer Name heißt „Training A“ usw. Einheiten, die der Split gerade nicht nutzt,
+// bleiben gespeichert (falls man später wieder von 2 auf 3 wechselt).
 // "einheit" ist die Gewichtsart: "kg", "kg je Hand", "kg Scheiben gesamt", "nur Wdh." oder
 // "nur abhaken" (z. B. Dehnen: kein Gewicht, nur ein Haken pro Training).
 //
@@ -673,13 +705,13 @@ zeigeAffirmationen();
 //                     haken: { dehnen: true } } }
 // Ein Satz zählt als gemacht, sobald er gespeichert ist (✓ getippt oder ein Wert geändert).
 
-const GYM_START = "2026-10-26";      // Montag der Woche 1
-const GYM_BLOCK_WOCHEN = 4;          // nach 4 Wochen erinnert die App ans Überprüfen des Plans
-const GYM_PRO_WOCHE = 3;             // Mo, Mi, Fr
-const GYM_SAETZE = 2;
+// Wie viele Sätze pro Übung, steht in den Einstellungen (gymSaetze)
 const GYM_WDH_MIN = 6;               // darunter: Gewicht reduzieren
-const GYM_WDH_ZIEL = 10;             // 2× so viele: Gewicht erhöhen
-const GYM_EINHEITEN = ["A", "B"];
+const GYM_WDH_ZIEL = 10;             // alle Sätze so viele: Gewicht erhöhen
+const GYM_EINHEITEN = ["A", "B", "C"];   // alle möglichen Einheiten
+const GYM_IMPORT_EINHEITEN = ["A", "B"];  // der Import-Code (GYMPLAN1) kennt nur A und B
+const GYM_START = "2026-10-26";      // Montag der Woche 1 (für die Erinnerung ans Plan-Überprüfen)
+const GYM_BLOCK_WOCHEN = 4;          // nach 4 Wochen erinnert die App ans Überprüfen des Plans
 const GYM_KG_ARTEN = ["kg", "kg je Hand", "kg Scheiben gesamt", "nur Wdh.", "nur abhaken"];
 
 function gymUebung(id, name, kgArt) {
@@ -712,42 +744,55 @@ const GYM_STANDARD_PLAN = {
   ] }
 };
 
-let gymBearbeiten = false;   // Plan-bearbeiten-Modus an?
-let gymEditId = null;        // welche Übung gerade im Formular ist ("neu" = neue Übung)
-
-// Der Plan: der gespeicherte, sonst eine Kopie der Standard-Vorlage
-function ladeGymPlan() {
-  return laden("gym-plan", null) || JSON.parse(JSON.stringify(GYM_STANDARD_PLAN));
-}
-
-function speichereGymPlan(plan) {
-  speichern("gym-plan", plan);
-}
-
 // Einmalige Ergänzung (26.10.2026): „Dehnen“ als abhakbare Übung am Ende von Gym A und B,
 // auch in einem Plan, der schon auf dem Handy gespeichert ist. Wer Dehnen später löscht,
 // bekommt es nicht wieder zurück.
 if (!laden("gym-dehnen-ergaenzt", false)) {
   const gespeichert = laden("gym-plan", null);
   if (gespeichert) {
-    for (const einheit of GYM_EINHEITEN) {
+    for (const einheit of GYM_IMPORT_EINHEITEN) {
+      if (!gespeichert[einheit]) continue;
       const uebungen = gespeichert[einheit].uebungen;
       if (!uebungen.some(function (u) { return u.id === "dehnen"; })) {
         uebungen.push(gymUebung("dehnen", "Dehnen", "nur abhaken"));
       }
     }
-    speichereGymPlan(gespeichert);
+    speichern("gym-plan", gespeichert);
   }
   speichern("gym-dehnen-ergaenzt", true);
 }
 
-function gymNurWdh(uebung) {
-  return uebung.einheit === "nur Wdh.";
+let gymBearbeiten = false;   // Plan-bearbeiten-Modus an?
+let gymEditId = null;        // welche Übung gerade im Formular ist ("neu" = neue Übung)
+let gymAnsicht = null;       // von Hand gewählte Einheit für den gerade offenen Tag (sonst null)
+
+// Die Einheiten, die der gewählte Split gerade nutzt, z. B. ["A", "B"]
+function aktiveEinheiten() {
+  return GYM_EINHEITEN.slice(0, gymSplit());
 }
 
-// Ganze Tage zwischen zwei Daten ("2026-10-26", "2026-10-29" → 3)
-function tageZwischen(von, bis) {
-  return Math.round((new Date(bis + "T00:00") - new Date(von + "T00:00")) / 86400000);
+// Der Plan: der gespeicherte, sonst eine Kopie der Standard-Vorlage; fehlende Einheiten kommen leer dazu
+function ladeGymPlan() {
+  const plan = laden("gym-plan", null) || JSON.parse(JSON.stringify(GYM_STANDARD_PLAN));
+  for (const e of GYM_EINHEITEN) {
+    if (!plan[e]) plan[e] = { name: "", untertitel: "", uebungen: [] };
+  }
+  return plan;
+}
+
+// Anzeigename einer Einheit: der selbst gewählte, sonst „Training A“ (bei 1 nur „Training“)
+function gymName(plan, einheit) {
+  const name = plan[einheit].name;
+  if (name && name !== "Training") return name;
+  return gymSplit() > 1 ? "Training " + einheit : "Training";
+}
+
+function speichereGymPlan(plan) {
+  speichern("gym-plan", plan);
+}
+
+function gymNurWdh(uebung) {
+  return uebung.einheit === "nur Wdh.";
 }
 
 // "2026-10-26" → "26.10."
@@ -755,34 +800,42 @@ function punktDatum(datum) {
   return datum.slice(8, 10) + "." + datum.slice(5, 7) + ".";
 }
 
-// Welche Einheit schlägt der Plan für ein Datum vor? Mo/Mi/Fr ab Start, im Wochenwechsel:
-// ungerade Wochen Mo A · Mi B · Fr A, gerade Wochen Mo B · Mi A · Fr B.
-function gymVorschlag(datum) {
-  if (datum < GYM_START) return null;
-  const platz = [0, 2, 4].indexOf(wochentag(datum)); // Mo = 0, Mi = 2, Fr = 4
-  if (platz === -1) return null;
-  const woche = Math.floor(tageZwischen(GYM_START, datum) / 7) + 1;
-  return (woche % 2 === 1 ? ["A", "B", "A"] : ["B", "A", "B"])[platz];
-}
-
-// Die Einheit eines Tages: selbst gewählt, sonst der Vorschlag des Plans (oder keine)
-function gymEinheit(datum) {
-  const eintrag = laden("gym", {})[datum];
-  if (eintrag && GYM_EINHEITEN.includes(eintrag.einheit)) return eintrag.einheit;
-  return gymVorschlag(datum);
+// Ganze Tage zwischen zwei Daten ("2026-10-26", "2026-10-29" → 3)
+function tageZwischen(von, bis) {
+  return Math.round((new Date(bis + "T00:00") - new Date(von + "T00:00")) / 86400000);
 }
 
 function gymSatzGemacht(satz) {
   return Boolean(satz && satz.wdh > 0);
 }
 
-// Wurde an diesem Tag mindestens ein Satz gemacht?
+// Wurde an diesem Tag mindestens ein Satz gemacht (oder etwas abgehakt)?
 function gymTrainiert(datum) {
   const eintrag = laden("gym", {})[datum];
   if (!eintrag) return false;
-  return Object.values(eintrag.saetze || {}).some(function (saetze) {
+  const satzGemacht = Object.values(eintrag.saetze || {}).some(function (saetze) {
     return saetze.some(gymSatzGemacht);
   });
+  return satzGemacht || Object.keys(eintrag.haken || {}).length > 0;
+}
+
+// Welche Einheit ist laut Reihenfolge dran? Die nach dem letzten Training vor diesem Tag
+// (A → B → C → A …). Gab es noch keins, oder war die letzte Einheit nicht mehr im Split, ist es A.
+function gymVorschlag(datum) {
+  const gym = laden("gym", {});
+  const aktiv = aktiveEinheiten();
+  const tage = Object.keys(gym).filter(function (d) { return d < datum && gymTrainiert(d); }).sort();
+  if (tage.length === 0) return aktiv[0];
+  const zuletzt = aktiv.indexOf(gym[tage[tage.length - 1]].einheit);
+  return zuletzt === -1 ? aktiv[0] : aktiv[(zuletzt + 1) % aktiv.length];
+}
+
+// Die Einheit eines Tages: von Hand gewählt, sonst die gespeicherte, sonst der Vorschlag
+function gymEinheit(datum) {
+  if (datum === gewaehlterTag && gymAnsicht && aktiveEinheiten().includes(gymAnsicht)) return gymAnsicht;
+  const eintrag = laden("gym", {})[datum];
+  if (eintrag && aktiveEinheiten().includes(eintrag.einheit)) return eintrag.einheit;
+  return gymVorschlag(datum);
 }
 
 // „Kraftwert“ eines Satzes: verbindet Gewicht und Wiederholungen zu einer Zahl,
@@ -826,7 +879,8 @@ function satzText(satz, nurWdh) {
 // Merkt sich einen gemachten Satz für den gewählten Tag
 function speichereSatz(uebungId, nr, kg, wdh) {
   const gym = laden("gym", {});
-  const tag = gym[gewaehlterTag] || { einheit: gymEinheit(gewaehlterTag), saetze: {} };
+  const tag = gym[gewaehlterTag] || { saetze: {} };
+  tag.einheit = gymEinheit(gewaehlterTag); // merkt sich, welche Einheit trainiert wurde
   tag.saetze = tag.saetze || {};
   tag.saetze[uebungId] = tag.saetze[uebungId] || [];
   tag.saetze[uebungId][nr] = { kg: kg, wdh: wdh };
@@ -867,8 +921,8 @@ function gymHinweisArt(vorher) {
   if (!vorher) return null;
   const saetze = vorher.saetze;
   if (gymSatzGemacht(saetze[0]) && saetze[0].wdh < GYM_WDH_MIN) return "reduzieren";
-  const ersteSaetze = saetze.slice(0, GYM_SAETZE);
-  const geschafft = ersteSaetze.length >= GYM_SAETZE && ersteSaetze.every(function (s) {
+  const ersteSaetze = saetze.slice(0, gymSaetze());
+  const geschafft = ersteSaetze.length >= gymSaetze() && ersteSaetze.every(function (s) {
     return gymSatzGemacht(s) && s.wdh >= GYM_WDH_ZIEL;
   });
   return geschafft ? "erhoehen" : null;
@@ -882,33 +936,66 @@ function zeigeGym() {
   const einheit = gymEinheit(gewaehlterTag);
   const tag = laden("gym", {})[gewaehlterTag] || { saetze: {} };
 
-  // Knöpfe „Gym A“ / „Gym B“
-  for (const knopf of document.querySelectorAll("#gym-einheiten button")) {
-    knopf.textContent = plan[knopf.dataset.einheit].name;
-    knopf.classList.toggle("aktiv", knopf.dataset.einheit === einheit);
-  }
-
-  // Bearbeiten-Knöpfe
-  document.getElementById("gym-bearbeiten-knopf").textContent = gymBearbeiten ? "Fertig" : "✏️ Plan bearbeiten";
+  // Bearbeiten-Knopf („offen“ = Bearbeiten-Modus an, Aussehen im CSS)
+  const bearbeitenKnopf = document.getElementById("gym-bearbeiten-knopf");
+  bearbeitenKnopf.textContent = gymBearbeiten ? "Fertig" : "Plan bearbeiten";
+  bearbeitenKnopf.classList.toggle("offen", gymBearbeiten);
   document.getElementById("gym-import").classList.toggle("versteckt", !gymBearbeiten);
+
+  zeigeGymEinheiten(plan, einheit);
+  zeigeGymInfo();
 
   const liste = document.getElementById("gym-uebungen");
   liste.innerHTML = "";
   const hinweis = document.getElementById("gym-hinweis");
+  hinweis.textContent = "";
 
-  const angezeigt = einheit || (gymBearbeiten ? "A" : null);
-  if (!angezeigt) {
-    hinweis.textContent = "Kein Trainingstag laut Plan (Mo/Mi/Fr ab " + punktDatum(GYM_START) +
-      "). Wähle oben Gym A oder B, wenn du trotzdem trainierst.";
+  if (gymBearbeiten) {
+    zeigeGymBearbeiten(plan, einheit);
+  } else if (plan[einheit].uebungen.length === 0) {
+    hinweis.textContent = "Noch keine Übungen in „" + gymName(plan, einheit) +
+      "“. Tippe auf „Plan bearbeiten“, um welche anzulegen.";
   } else {
-    hinweis.textContent = plan[angezeigt].untertitel || "";
-    if (gymBearbeiten) {
-      zeigeGymBearbeiten(plan, angezeigt);
-    } else {
-      zeigeGymUebungen(plan, angezeigt, tag);
+    // Bei mehreren Einheiten sagen, was laut Reihenfolge dran ist
+    if (gymSplit() > 1 && !gymTrainiert(gewaehlterTag)) {
+      const vorschlag = gymVorschlag(gewaehlterTag);
+      hinweis.textContent = vorschlag === einheit
+        ? "Laut Reihenfolge ist das heute dran."
+        : "Laut Reihenfolge wäre „" + gymName(plan, vorschlag) + "“ dran.";
     }
+    zeigeGymUebungen(plan, einheit, tag);
   }
   zeigeGymFortschritt();
+  zeigeGymVerlauf();
+}
+
+// Infozeile über den Übungen: Sätze und Pause kommen aus den Einstellungen
+function zeigeGymInfo() {
+  const pause = gymPause();
+  document.getElementById("gym-info").textContent =
+    gymSaetze() + " Sätze à " + GYM_WDH_MIN + "–" + GYM_WDH_ZIEL + " Wiederholungen" +
+    (pause > 0 ? " · ca. " + pause + " Sek. Satzpause" : "") +
+    " · Vorher: 5–10 min laufen";
+}
+
+// Auswahl der Einheit (nur bei Split 2 oder 3): ein Knopf pro Einheit
+function zeigeGymEinheiten(plan, einheit) {
+  const leiste = document.getElementById("gym-einheiten");
+  leiste.innerHTML = "";
+  leiste.classList.toggle("versteckt", gymSplit() === 1);
+
+  for (const e of aktiveEinheiten()) {
+    const knopf = document.createElement("button");
+    knopf.type = "button";
+    knopf.textContent = gymName(plan, e);
+    knopf.classList.toggle("aktiv", e === einheit);
+    knopf.addEventListener("click", function () {
+      gymAnsicht = e;
+      gymEditId = null;
+      zeigeGym();
+    });
+    leiste.append(knopf);
+  }
 }
 
 function zeigeGymUebungen(plan, einheit, tag) {
@@ -943,12 +1030,12 @@ function zeigeGymUebungen(plan, einheit, tag) {
       const tipp = document.createElement("span");
       tipp.className = "gym-tipp";
       tipp.textContent = art === "erhoehen"
-        ? "Letztes Mal 2× " + GYM_WDH_ZIEL + " geschafft → Gewicht erhöhen"
+        ? "Letztes Mal " + gymSaetze() + "× " + GYM_WDH_ZIEL + " geschafft → Gewicht erhöhen"
         : "Letztes Mal Satz 1 unter " + GYM_WDH_MIN + " Wdh. → Gewicht reduzieren";
       karte.append(tipp);
     }
 
-    for (let nr = 0; nr < GYM_SAETZE; nr++) {
+    for (let nr = 0; nr < gymSaetze(); nr++) {
       karte.append(gymSatzZeile(uebung, nr, tag, vorher));
     }
     liste.append(karte);
@@ -958,7 +1045,8 @@ function zeigeGymUebungen(plan, einheit, tag) {
 // Merkt sich einen Haken (z. B. Dehnen) für den gewählten Tag
 function speichereHaken(uebungId, wert) {
   const gym = laden("gym", {});
-  const tag = gym[gewaehlterTag] || { einheit: gymEinheit(gewaehlterTag), saetze: {} };
+  const tag = gym[gewaehlterTag] || { saetze: {} };
+  tag.einheit = gymEinheit(gewaehlterTag);
   tag.haken = tag.haken || {};
   if (wert) {
     tag.haken[uebungId] = true;
@@ -986,7 +1074,7 @@ function gymHakenKarte(uebung, tag) {
   const haken = document.createElement("button");
   haken.type = "button";
   haken.className = "gym-haken";
-  haken.textContent = "✓";
+  haken.append(symbol("haken"));
   haken.title = "Gemacht";
 
   function aktualisiere() {
@@ -1036,7 +1124,7 @@ function gymSatzZeile(uebung, nr, tag, vorher) {
   const haken = document.createElement("button");
   haken.type = "button";
   haken.className = "gym-haken";
-  haken.textContent = "✓";
+  haken.append(symbol("haken"));
   haken.title = "Satz gemacht";
   haken.addEventListener("click", beiHaken);
 
@@ -1098,23 +1186,66 @@ function gymSatzZeile(uebung, nr, tag, vorher) {
     speichereSatz(uebung.id, nr, w.kg, w.wdh);
     gemacht = true;
     aktualisiere();
+    startePause();
   }
 
   aktualisiere();
   return zeile;
 }
 
-// Einheit-Knöpfe: Auswahl für den gewählten Tag speichern
-for (const knopf of document.querySelectorAll("#gym-einheiten button")) {
-  knopf.addEventListener("click", function () {
-    const gym = laden("gym", {});
-    const tag = gym[gewaehlterTag] || { saetze: {} };
-    tag.einheit = knopf.dataset.einheit;
-    gym[gewaehlterTag] = tag;
-    speichern("gym", gym);
-    zeigeGym();
-  });
+
+// --- Pausen-Timer ---
+// Startet nach jedem ✓. Die Dauer steht in den Einstellungen (gymPause, 0 = aus).
+// Wir merken uns die Uhrzeit, wann die Pause endet – so stimmt der Timer auch,
+// wenn das Handy zwischendurch gesperrt war.
+
+let pauseEnde = null;    // Zeitpunkt in Millisekunden, wann die Pause vorbei ist
+let pauseUhr = null;     // der „Wecker“, der jede Viertelsekunde die Anzeige auffrischt
+
+function startePause() {
+  const sekunden = gymPause();
+  if (sekunden === 0) return;
+  pauseEnde = Date.now() + sekunden * 1000;
+  clearInterval(pauseUhr);
+  pauseUhr = setInterval(zeigePause, 250);
+  zeigePause();
 }
+
+function beendePause() {
+  clearInterval(pauseUhr);
+  pauseEnde = null;
+  document.getElementById("pause").classList.add("versteckt");
+}
+
+// 83 → "1:23"
+function minutenText(sekunden) {
+  return Math.floor(sekunden / 60) + ":" + String(sekunden % 60).padStart(2, "0");
+}
+
+function zeigePause() {
+  const leiste = document.getElementById("pause");
+  const text = document.getElementById("pause-text");
+  const knopf = document.getElementById("pause-ueberspringen");
+  const rest = Math.ceil((pauseEnde - Date.now()) / 1000);
+  leiste.classList.remove("versteckt");
+
+  if (rest > 0) {
+    text.textContent = "Pause " + minutenText(rest);
+    knopf.textContent = "Überspringen";
+    leiste.classList.remove("vorbei");
+    return;
+  }
+
+  // Pause vorbei: kurz vibrieren (falls das Handy das kann), nach 5 Sekunden ausblenden
+  clearInterval(pauseUhr);
+  text.textContent = "Pause vorbei – nächster Satz!";
+  knopf.textContent = "OK";
+  leiste.classList.add("vorbei");
+  if (navigator.vibrate) navigator.vibrate([200, 100, 200]);
+  pauseUhr = setTimeout(beendePause, 5000);
+}
+
+document.getElementById("pause-ueberspringen").addEventListener("click", beendePause);
 
 
 // --- Plan bearbeiten (✏️ ▲ ▼ ✕ +) ---
@@ -1122,6 +1253,22 @@ for (const knopf of document.querySelectorAll("#gym-einheiten button")) {
 function zeigeGymBearbeiten(plan, einheit) {
   const liste = document.getElementById("gym-uebungen");
   const uebungen = plan[einheit].uebungen;
+
+  // Name der Einheit ändern, z. B. „Push“ oder „Beine“ (leer = „Training A“)
+  const nameLabel = document.createElement("label");
+  nameLabel.className = "gym-name-feld";
+  const nameText = document.createElement("span");
+  nameText.textContent = "Name dieser Einheit";
+  const nameFeld = document.createElement("input");
+  nameFeld.value = gymName(plan, einheit);
+  nameFeld.addEventListener("change", function () {
+    const neuerPlan = ladeGymPlan();
+    neuerPlan[einheit].name = nameFeld.value.trim();
+    speichereGymPlan(neuerPlan);
+    zeigeGym();
+  });
+  nameLabel.append(nameText, nameFeld);
+  liste.append(nameLabel);
 
   uebungen.forEach(function (uebung, i) {
     if (gymEditId === uebung.id) {
@@ -1132,10 +1279,10 @@ function zeigeGymBearbeiten(plan, einheit) {
     const zeile = document.createElement("div");
     zeile.className = "gym-edit-zeile";
 
-    const knopf = function (text, titel, aktion, gesperrt) {
+    const knopf = function (symbolName, titel, aktion, gesperrt) {
       const k = document.createElement("button");
       k.type = "button";
-      k.textContent = text;
+      k.append(symbol(symbolName));
       k.title = titel;
       k.disabled = Boolean(gesperrt);
       k.addEventListener("click", aktion);
@@ -1146,11 +1293,11 @@ function zeigeGymBearbeiten(plan, einheit) {
     name.textContent = uebung.name;
 
     zeile.append(
-      knopf("▲", "Nach oben", function () { verschiebeGymUebung(einheit, uebung.id, -1); }, i === 0),
-      knopf("▼", "Nach unten", function () { verschiebeGymUebung(einheit, uebung.id, 1); }, i === uebungen.length - 1),
+      knopf("hoch", "Nach oben", function () { verschiebeGymUebung(einheit, uebung.id, -1); }, i === 0),
+      knopf("runter", "Nach unten", function () { verschiebeGymUebung(einheit, uebung.id, 1); }, i === uebungen.length - 1),
       name,
-      knopf("✏️", "Ändern", function () { gymEditId = uebung.id; zeigeGym(); }),
-      knopf("✕", "Entfernen", function () { entferneGymUebung(einheit, uebung.id); })
+      knopf("stift", "Ändern", function () { gymEditId = uebung.id; zeigeGym(); }),
+      knopf("kreuz", "Entfernen", function () { entferneGymUebung(einheit, uebung.id); })
     );
     liste.append(zeile);
   });
@@ -1160,8 +1307,8 @@ function zeigeGymBearbeiten(plan, einheit) {
   } else {
     const neuKnopf = document.createElement("button");
     neuKnopf.type = "button";
-    neuKnopf.className = "nebenknopf";
-    neuKnopf.textContent = "+ Übung hinzufügen";
+    neuKnopf.className = "nebenknopf plus-knopf";
+    neuKnopf.textContent = "Übung hinzufügen";
     neuKnopf.addEventListener("click", function () { gymEditId = "neu"; zeigeGym(); });
     liste.append(neuKnopf);
   }
@@ -1285,7 +1432,7 @@ function bereinigeGymImport(daten) {
   if (!daten || daten.v !== 1 || !daten.plan) throw new Error("Kein Gym-Code");
   const sauber = { plan: {}, training: {} };
 
-  for (const einheit of GYM_EINHEITEN) {
+  for (const einheit of GYM_IMPORT_EINHEITEN) {
     const roh = daten.plan[einheit];
     if (!roh || !Array.isArray(roh.uebungen)) throw new Error("Einheit " + einheit + " fehlt");
     sauber.plan[einheit] = {
@@ -1304,7 +1451,7 @@ function bereinigeGymImport(daten) {
   }
 
   // „Dehnen“ gehört zu jeder Einheit; fehlt es im Code, wird es angehängt
-  for (const einheit of GYM_EINHEITEN) {
+  for (const einheit of GYM_IMPORT_EINHEITEN) {
     const uebungen = sauber.plan[einheit].uebungen;
     if (!uebungen.some(function (u) { return u.id === "dehnen"; })) {
       uebungen.push(gymUebung("dehnen", "Dehnen", "nur abhaken"));
@@ -1370,7 +1517,7 @@ document.getElementById("gym-import-uebernehmen").addEventListener("click", func
     if (gymTrainiert(datum) && !habitTag(datum)["krafttraining"]) setzeHabit(datum, "krafttraining", "x");
   }
 
-  document.getElementById("gym-import-meldung").textContent = "Fertig importiert ✓";
+  document.getElementById("gym-import-meldung").textContent = "Fertig importiert";
   document.getElementById("gym-import-uebernehmen").classList.add("versteckt");
   document.getElementById("gym-import-text").value = "";
   zeigeHabits();
@@ -1511,41 +1658,39 @@ function zeigeGymFortschritt() {
   const plan = ladeGymPlan();
   const daten = gymFortschrittDaten();
 
-  // 1. Plan-Ring für die aktuelle Woche (Mo–So): x von 3 Einheiten
+  // 1. Ring für die aktuelle Woche (Mo–So): x von <Ziel aus den Einstellungen> Einheiten
+  const ziel = gymProWoche();
   const wochenStart = montagVon(heute());
   const wochenEnde = verschiebeTag(wochenStart, 6);
   const absolviert = Object.keys(gym).filter(function (d) {
     return d >= wochenStart && d <= wochenEnde && gymTrainiert(d);
   }).length;
-  const wochenNr = heute() < GYM_START ? 0 : Math.floor(tageZwischen(GYM_START, heute()) / 7) + 1;
-
-  // Der 4-Wochen-Block wird nur noch für die Erinnerung „Plan überprüfen“ gebraucht
-  const blockNr = Math.max(0, Math.floor(tageZwischen(GYM_START, heute()) / (7 * GYM_BLOCK_WOCHEN)));
-  const blockStart = verschiebeTag(GYM_START, blockNr * 7 * GYM_BLOCK_WOCHEN);
 
   const ringZeile = document.createElement("div");
   ringZeile.className = "gym-ring-zeile";
   const ringText = document.createElement("div");
   const wocheText = document.createElement("strong");
-  wocheText.textContent = wochenNr === 0 ? "Start am " + punktDatum(GYM_START) : "Woche " + wochenNr;
+  wocheText.textContent = "Diese Woche";
   const zeitraum = document.createElement("span");
   zeitraum.textContent = punktDatum(wochenStart) + " – " + punktDatum(wochenEnde);
   const zaehler = document.createElement("span");
-  zaehler.textContent = absolviert + " von " + GYM_PRO_WOCHE + " Einheiten";
+  zaehler.textContent = absolviert + " von " + ziel + " Einheiten";
   // Alle Einheiten seit Beginn, ohne Begrenzung
   const gesamt = Object.keys(gym).filter(gymTrainiert).length;
   const gesamtZeile = document.createElement("span");
   gesamtZeile.textContent = "Insgesamt: " + gesamt + (gesamt === 1 ? " Einheit" : " Einheiten");
   ringText.append(wocheText, zeitraum, zaehler, gesamtZeile);
-  ringZeile.append(gymRing(absolviert, GYM_PRO_WOCHE), ringText);
+  ringZeile.append(gymRing(absolviert, ziel), ringText);
   inhalt.append(ringZeile);
 
-  // 2. Nach dem Block: Erinnerung, den Plan zu überprüfen (bis du sie wegtippst)
+  // Nach 4 Wochen: Erinnerung, den Plan zu überprüfen (bis du sie wegtippst)
+  const blockNr = Math.max(0, Math.floor(tageZwischen(GYM_START, heute()) / (7 * GYM_BLOCK_WOCHEN)));
+  const blockStart = verschiebeTag(GYM_START, blockNr * 7 * GYM_BLOCK_WOCHEN);
   const pruefDatum = verschiebeTag(blockStart, 7 * GYM_BLOCK_WOCHEN - 3); // Freitag der letzten Woche
   if (heute() >= pruefDatum && laden("gym-review-ok", -1) < blockNr) {
     const pruefen = document.createElement("p");
     pruefen.className = "frueherer-tag";
-    pruefen.append(GYM_BLOCK_WOCHEN + " Wochen geschafft: Zeit, den Plan zu überprüfen (✏️ Plan bearbeiten). ");
+    pruefen.append(GYM_BLOCK_WOCHEN + " Wochen geschafft: Zeit, den Plan zu überprüfen (Plan bearbeiten). ");
     const erledigt = document.createElement("button");
     erledigt.textContent = "Erledigt";
     erledigt.addEventListener("click", function () {
@@ -1559,28 +1704,25 @@ function zeigeGymFortschritt() {
   if (daten.punkte.length === 0) {
     const leer = document.createElement("p");
     leer.className = "hinweis";
-    leer.textContent = "Sobald du Sätze mit ✓ bestätigt hast, siehst du hier deinen Fortschritt.";
+    leer.textContent = "Sobald du Sätze mit dem Haken bestätigt hast, siehst du hier deinen Fortschritt.";
     inhalt.append(leer);
     return;
   }
 
-  // 3. Gesamtkurve
+  // 2. Gesamtkurve
   const kopf = document.createElement("p");
   kopf.append("Gesamt (Ø aller Übungen): ");
   const zahl = document.createElement("strong");
   zahl.textContent = prozentText(daten.punkte[daten.punkte.length - 1].prozent);
   kopf.append(zahl, " seit Start");
-  const legende = document.createElement("p");
-  legende.className = "hinweis gym-legende";
-  legende.innerHTML = '<span class="punkt-legende A"></span>Gym A <span class="punkt-legende B"></span>Gym B';
-  inhalt.append(kopf, gymKurve(daten.punkte), legende);
+  inhalt.append(kopf, gymKurve(daten.punkte));
 
-  // 4. Eine kleine Linie pro Übung, nach Einheit gruppiert
+  // 3. Eine kleine Linie pro Übung
   for (const einheit of GYM_EINHEITEN) {
     const uebungen = plan[einheit].uebungen.filter(function (u) { return daten.verlauf[u.id]; });
     if (uebungen.length === 0) continue;
     const titel = document.createElement("h3");
-    titel.textContent = plan[einheit].name + (plan[einheit].untertitel ? " · " + plan[einheit].untertitel : "");
+    titel.textContent = gymName(plan, einheit);
     inhalt.append(titel);
 
     for (const uebung of uebungen) {
@@ -1600,6 +1742,180 @@ function zeigeGymFortschritt() {
 }
 
 
+// --- Verlauf: frühere Trainings, neuestes zuerst ---
+// Jeder Tag ist aufklappbar und zeigt die Sätze. „Diesen Tag öffnen“ springt
+// mit der Datumsleiste dorthin, z. B. um etwas nachzutragen.
+// Heute steht nicht drin – das siehst du ja oben.
+
+function zeigeGymVerlauf() {
+  const inhalt = document.getElementById("gym-verlauf-inhalt");
+  inhalt.innerHTML = "";
+  const gym = laden("gym", {});
+  const plan = ladeGymPlan();
+
+  // Alle Übungen aller Einheiten, damit wir zu einer id den Namen finden
+  const alleUebungen = [];
+  for (const einheit of GYM_EINHEITEN) alleUebungen.push(...plan[einheit].uebungen);
+
+  const tage = Object.keys(gym)
+    .filter(function (d) { return d !== heute() && gymTrainiert(d); })
+    .sort()
+    .reverse();
+
+  if (tage.length === 0) {
+    const leer = document.createElement("p");
+    leer.className = "hinweis";
+    leer.textContent = "Noch keine früheren Trainings.";
+    inhalt.append(leer);
+    return;
+  }
+
+  for (const datum of tage) {
+    const tag = gym[datum];
+    const block = document.createElement("details");
+    const ueberschrift = document.createElement("summary");
+    const einheit = GYM_EINHEITEN.includes(tag.einheit) ? tag.einheit : "A";
+    ueberschrift.textContent = tagesName(datum) + " · " + gymName(plan, einheit);
+    block.append(ueberschrift);
+
+    // Eine Zeile pro Übung (gelöschte Übungen fallen raus, wie im Fortschritt)
+    for (const uebung of alleUebungen) {
+      const saetze = ((tag.saetze || {})[uebung.id] || []).filter(gymSatzGemacht);
+      const abgehakt = (tag.haken || {})[uebung.id];
+      if (saetze.length === 0 && !abgehakt) continue;
+
+      const zeile = document.createElement("div");
+      zeile.className = "gym-verlauf-zeile";
+      const name = document.createElement("span");
+      name.textContent = uebung.name;
+      const werte = document.createElement("span");
+      werte.className = "hinweis";
+      werte.textContent = abgehakt
+        ? "erledigt"
+        : saetze.map(function (s) { return satzText(s, gymNurWdh(uebung)); }).join(" · ");
+      zeile.append(name, werte);
+      block.append(zeile);
+    }
+
+    const oeffnen = document.createElement("button");
+    oeffnen.type = "button";
+    oeffnen.className = "nebenknopf bearbeiten-knopf";
+    oeffnen.textContent = "Diesen Tag öffnen";
+    oeffnen.addEventListener("click", function () {
+      waehleTag(datum);
+      window.scrollTo(0, 0);
+    });
+    block.append(oeffnen);
+    inhalt.append(block);
+  }
+}
+
+// Beim Aufklappen neu aufbauen, damit gerade Nachgetragenes schon drinsteht
+document.getElementById("gym-verlauf").addEventListener("toggle", function () {
+  if (this.open) zeigeGymVerlauf();
+});
+
+
+// ===== Einstellungen =====
+// Gespeichert unter "einstellungen", z. B. { gymProWoche: 3, gymSplit: 2, gymSaetze: 3 }
+// Was dort nicht steht, hat den Standardwert.
+
+function ladeEinstellungen() {
+  const e = laden("einstellungen", {});
+  return {
+    gymProWoche: e.gymProWoche || 3,
+    gymSplit: [1, 2, 3].includes(e.gymSplit) ? e.gymSplit : 2,  // 1 = Ganzkörper, 2 = A/B, 3 = A/B/C
+    gymSaetze: e.gymSaetze || 2,
+    gymPause: typeof e.gymPause === "number" ? e.gymPause : 90   // Sekunden, 0 = aus
+  };
+}
+
+function gymPause() {
+  return ladeEinstellungen().gymPause;
+}
+
+function gymProWoche() {
+  return ladeEinstellungen().gymProWoche;
+}
+
+function gymSaetze() {
+  return ladeEinstellungen().gymSaetze;
+}
+
+function gymSplit() {
+  return ladeEinstellungen().gymSplit;
+}
+
+function zeigeEinstellungen() {
+  const e = ladeEinstellungen();
+  document.getElementById("einstellungen-gym-ziel").value = e.gymProWoche;
+  document.getElementById("einstellungen-gym-saetze").value = e.gymSaetze;
+  document.getElementById("einstellungen-gym-pause").value = e.gymPause;
+
+  // Split: Ganzkörper, 2er- oder 3er-Split
+  const splitLeiste = document.getElementById("einstellungen-gym-split");
+  splitLeiste.innerHTML = "";
+  const splitNamen = { 1: "Ganzkörper", 2: "2er-Split", 3: "3er-Split" };
+  for (const anzahl of [1, 2, 3]) {
+    const knopf = document.createElement("button");
+    knopf.type = "button";
+    knopf.textContent = splitNamen[anzahl];
+    knopf.classList.toggle("aktiv", anzahl === e.gymSplit);
+    knopf.addEventListener("click", function () {
+      const einst = ladeEinstellungen();
+      einst.gymSplit = anzahl;
+      speichern("einstellungen", einst);
+      gymAnsicht = null;
+      gymEditId = null;
+      zeigeEinstellungen();
+      zeigeGym();
+      zeigeHeute();
+    });
+    splitLeiste.append(knopf);
+  }
+  document.getElementById("einstellungen-gym-split-hinweis").textContent = e.gymSplit === 1
+    ? "Ein Training, das du immer wiederholst."
+    : "Die Einheiten kommen der Reihe nach dran (" + GYM_EINHEITEN.slice(0, e.gymSplit).join(", ") +
+      ", dann wieder von vorn). Nicht genutzte Einheiten bleiben gespeichert.";
+}
+
+document.getElementById("einstellungen-gym-ziel").addEventListener("change", function () {
+  const ziel = Math.min(7, Math.max(1, Math.round(Number(this.value) || 3)));
+  this.value = ziel;
+  const e = ladeEinstellungen();
+  e.gymProWoche = ziel;
+  speichern("einstellungen", e);
+  zeigeGymFortschritt();
+  zeigeHeute();
+});
+
+document.getElementById("einstellungen-gym-saetze").addEventListener("change", function () {
+  const saetze = Math.min(6, Math.max(1, Math.round(Number(this.value) || 2)));
+  this.value = saetze;
+  const e = ladeEinstellungen();
+  e.gymSaetze = saetze;
+  speichern("einstellungen", e);
+  zeigeGym();
+});
+
+document.getElementById("einstellungen-gym-pause").addEventListener("change", function () {
+  // Leeres Feld = Standard 90; 0 schaltet den Timer aus; höchstens 10 Minuten
+  const zahl = this.value === "" ? 90 : Math.round(Number(this.value) || 0);
+  const pause = Math.min(600, Math.max(0, zahl));
+  this.value = pause;
+  const e = ladeEinstellungen();
+  e.gymPause = pause;
+  speichern("einstellungen", e);
+});
+
+document.getElementById("einstellungen-knopf").addEventListener("click", function () {
+  zeigeBereich("einstellungen");
+});
+document.getElementById("einstellungen-fertig").addEventListener("click", function () {
+  zeigeBereich("heute");
+});
+
+
 // ===== Startseite „Heute“ =====
 
 // Baut einen Kasten mit Überschrift, Text und (falls vorhanden) einer Liste.
@@ -1612,10 +1928,14 @@ function heuteKasten(titel, text, eintraege, zielBereich, fertig) {
   }
 
   const ueberschrift = document.createElement("strong");
-  ueberschrift.textContent = (fertig ? "✅ " : "⏳ ") + titel;
+  ueberschrift.textContent = titel;
   const beschreibung = document.createElement("span");
   beschreibung.textContent = text;
-  kasten.append(ueberschrift, beschreibung, eintragsListe(eintraege));
+  // Kreis rechts: leer = offen, gefüllt mit Haken = erledigt (Aussehen im CSS)
+  const status = document.createElement("span");
+  status.className = "status";
+  if (fertig) status.append(symbol("haken"));
+  kasten.append(ueberschrift, status, beschreibung, eintragsListe(eintraege));
 
   kasten.addEventListener("click", function () {
     zeigeBereich(zielBereich);
@@ -1751,7 +2071,7 @@ function schlafKasten() {
   kasten.className = "heute-kasten neutral";
 
   const ueberschrift = document.createElement("strong");
-  ueberschrift.textContent = "😴 Schlafenszeit";
+  ueberschrift.textContent = "Schlafenszeit";
   const text = document.createElement("span");
   text.textContent = "Licht aus um ca. " + lichtAus(wecker) + " (Wecker ";
 
@@ -1996,7 +2316,7 @@ function mailHeuteKasten() {
   }
   if (zeilen.length === 0) zeilen.push("Keine Termine heute");
 
-  return infoKasten("📬 Heute laut Mail · Stand " + code.erstellt.slice(11, 16), wetterText(code.wetter), zeilen);
+  return infoKasten("Heute laut Mail · Stand " + code.erstellt.slice(11, 16), wetterText(code.wetter), zeilen);
 }
 
 // Kasten „Morgen laut Mail“ (Abend-Code, der sich auf morgen bezieht)
@@ -2010,7 +2330,7 @@ function mailMorgenKasten() {
   }
   if (zeilen.length === 0) zeilen.push("Keine Termine morgen");
 
-  return infoKasten("🌙 Morgen laut Mail · Stand " + code.erstellt.slice(11, 16), wetterText(code.wetter), zeilen);
+  return infoKasten("Morgen laut Mail · Stand " + code.erstellt.slice(11, 16), wetterText(code.wetter), zeilen);
 }
 
 // Knopf „Aus Mail einfügen“: erst die Zwischenablage versuchen, sonst ein Textfeld zeigen
@@ -2111,14 +2431,21 @@ function zeigeHeute() {
     mindestOffen.length === 0
   ));
 
-  // 2b. Gym: an Trainingstagen (Mo/Mi/Fr oder selbst gewählt) – gelb bis eingetragen
-  const einheitHeute = gymEinheit(heute());
-  if (einheitHeute) {
-    const trainiert = gymTrainiert(heute());
-    const gymPlan = ladeGymPlan()[einheitHeute];
+  // 2b. Gym: wenn heute trainiert wurde, oder wenn das Wochenziel noch nicht erreicht ist
+  const gymTage = laden("gym", {});
+  const wochenStart = montagVon(heute());
+  const gymDieseWoche = Object.keys(gymTage).filter(function (d) {
+    return d >= wochenStart && d <= heute() && gymTrainiert(d);
+  }).length;
+  const trainiert = gymTrainiert(heute());
+  if (trainiert || gymDieseWoche < gymProWoche()) {
+    const gymPlan = ladeGymPlan();
+    const einheitHeute = gymEinheit(heute());
     kaesten.append(heuteKasten(
-      "Heute: " + gymPlan.name + (gymPlan.untertitel ? " (" + gymPlan.untertitel + ")" : ""),
-      trainiert ? "Training eingetragen" : "Noch nicht eingetragen",
+      "Heute: " + gymName(gymPlan, einheitHeute),
+      trainiert
+        ? "Training eingetragen"
+        : "Noch nicht eingetragen · diese Woche " + gymDieseWoche + " von " + gymProWoche(),
       [],
       "gym",
       trainiert
@@ -2182,6 +2509,9 @@ function zeigeBereich(name) {
   // 4. Die Startseite jedes Mal neu berechnen – in den anderen Bereichen kann sich ja was geändert haben
   if (name === "heute") {
     zeigeHeute();
+  }
+  if (name === "einstellungen") {
+    zeigeEinstellungen();
   }
   window.scrollTo(0, 0);
 }
