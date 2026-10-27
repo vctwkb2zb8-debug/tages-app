@@ -37,7 +37,7 @@ self.addEventListener("activate", function (ereignis) {
     caches.keys().then(function (namen) {
       return Promise.all(
         namen
-          .filter(function (name) { return name !== LAGER; })
+          .filter(function (name) { return name.startsWith("tages-app-") && name !== LAGER; })
           .map(function (name) { return caches.delete(name); })
       );
     })

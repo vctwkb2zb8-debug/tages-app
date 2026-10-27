@@ -1,0 +1,879 @@
+/* ===== Farbpalette =====
+   Alle Farben stehen hier an EINER Stelle (sogenannte CSS-Variablen).
+   Weiter unten wird nur noch mit var(--name) auf sie verwiesen.
+   Probier's aus: Ändere --akzent, und die ganze App bekommt eine neue Farbe. */
+:root {
+  --akzent: #2e7d6b;          /* Hauptfarbe: Knöpfe, aktiver Tab, Haken */
+  --hintergrund: #f4f5f2;     /* Seitenhintergrund */
+  --karte: #ffffff;           /* Hintergrund von Kästen und Feldern */
+  --text: #1f2421;
+  --text-leise: #6b726d;      /* Nebeninfos wie Datum */
+  --rand: #dde0dc;
+  --offen: #fff6dc;           /* Startseite: noch offen */
+  --offen-rand: #efd98f;
+  --fertig: #e3f3e8;          /* Startseite: erledigt */
+  --fertig-rand: #9fd1ae;
+  --warnung: #c62828;         /* überfällige ToDos */
+  color-scheme: light dark;   /* Datumsauswahl & Häkchen passen sich hell/dunkel an */
+}
+
+/* Dunkelmodus: Wenn das Handy dunkel eingestellt ist, gelten diese Farben */
+@media (prefers-color-scheme: dark) {
+  :root {
+    --akzent: #6fcfb4;
+    --hintergrund: #141716;
+    --karte: #1f2321;
+    --text: #e8ebe9;
+    --text-leise: #9aa29d;
+    --rand: #343a37;
+    --offen: #3a3320;
+    --offen-rand: #6b5b2a;
+    --fertig: #1d3326;
+    --fertig-rand: #2f5d40;
+    --warnung: #ff8a80;
+  }
+}
+
+
+/* ===== Grundlayout ===== */
+/* Kein Doppeltipp-Zoom, keine automatische Textvergrößerung beim Drehen des Handys */
+html {
+  touch-action: manipulation;
+  -webkit-text-size-adjust: 100%;
+}
+
+body {
+  font-family: system-ui, sans-serif;
+  background: var(--hintergrund);
+  color: var(--text);
+  margin: 0 auto;
+  max-width: 600px;              /* auf großen Bildschirmen nicht zu breit */
+  padding: 16px 16px 96px;       /* unten Platz lassen für die Leiste */
+  line-height: 1.4;
+}
+
+h1 {
+  font-size: 22px;
+  margin: 8px 0 16px;
+}
+
+h2 {
+  font-size: 26px;
+  margin: 0 0 12px;
+}
+
+h3 {
+  font-size: 16px;
+  color: var(--text-leise);
+  margin: 24px 0 8px;
+}
+
+/* Alle Eingabefelder und Knöpfe: gleiche Grundform */
+input,
+button {
+  font: inherit;
+  color: var(--text);
+  background: var(--karte);
+  border: 1px solid var(--rand);
+  border-radius: 10px;
+}
+
+input {
+  padding: 10px 12px;
+}
+
+select {
+  font: inherit;
+  color: var(--text);
+  background: var(--karte);
+  border: 1px solid var(--rand);
+  border-radius: 10px;
+  padding: 10px 12px;
+}
+
+button {
+  padding: 8px 12px;
+  cursor: pointer;
+}
+
+/* Knöpfe „Hinzufügen“: in der Akzentfarbe */
+button[type="submit"] {
+  background: var(--akzent);
+  border-color: var(--akzent);
+  color: var(--karte);
+  font-weight: 600;
+}
+
+
+
+/* ===== Untere Leiste ===== */
+nav {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  display: flex;
+  background: var(--karte);
+  border-top: 1px solid var(--rand);
+}
+
+nav button {
+  flex: 1;                       /* alle fünf Knöpfe gleich breit */
+  display: flex;
+  flex-direction: column;        /* Symbol oben, Wort darunter */
+  align-items: center;
+  gap: 3px;
+  padding: 8px 2px 10px;
+  font-size: 12px;
+  border: none;
+  border-radius: 0;
+  background: none;
+  color: var(--text-leise);
+}
+
+/* Die Symbole: nur Linien, Farbe = Textfarbe des Knopfs */
+nav svg {
+  width: 24px;
+  height: 24px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.8;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+/* Der Knopf des gerade offenen Bereichs */
+nav button.aktiv {
+  color: var(--akzent);
+  font-weight: bold;
+  box-shadow: inset 0 3px 0 var(--akzent); /* farbiger Strich oben */
+}
+
+
+/* Kleine Erklärtexte */
+.hinweis {
+  color: var(--text-leise);
+  font-size: 14px;
+}
+
+/* Fehlermeldung beim App-Code: gut sichtbar */
+.hinweis.fehler {
+  color: var(--warnung);
+  background: var(--karte);
+  border: 1px solid var(--warnung);
+  border-radius: 10px;
+  padding: 10px 12px;
+}
+
+/* Unauffällige Knöpfe wie „Habits bearbeiten“ oder „Prüfen“ */
+.nebenknopf {
+  display: block;
+  margin: 8px 0 12px;
+}
+
+/* Große Textfelder (Import, Affirmationen bearbeiten) */
+textarea {
+  display: block;
+  width: 100%;
+  box-sizing: border-box;
+  font: inherit;
+  font-size: 16px;               /* unter 16 px zoomt das iPhone beim Antippen von selbst hinein */
+  color: var(--text);
+  background: var(--karte);
+  border: 1px solid var(--rand);
+  border-radius: 10px;
+  padding: 10px 12px;
+  margin: 8px 0;
+}
+
+/* Aufklapp-Kästen (Import, Affirmationen bearbeiten) */
+#import,
+#gym-import,
+#affirmationen-bearbeiten {
+  margin-top: 16px;
+  padding: 12px 14px;
+  background: var(--karte);
+  border: 1px solid var(--rand);
+  border-radius: 12px;
+}
+
+#import summary,
+#gym-import summary,
+#affirmationen-bearbeiten summary {
+  cursor: pointer;
+  color: var(--text-leise);
+}
+
+
+/* ===== Datumsleiste (Habits und Tagebuch) ===== */
+.tagesleiste {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.tagesleiste button {
+  font-size: 22px;
+  line-height: 1;
+  padding: 8px 16px;
+}
+
+.tagesleiste button:disabled {
+  opacity: 0.3;                  /* „›“ ist blass, wenn man schon bei heute ist */
+  cursor: default;
+}
+
+.tag-anzeige,
+#woche-anzeige {
+  flex: 1;
+  text-align: center;
+  font-weight: 600;
+}
+
+/* Hinweis, wenn ein früherer Tag offen ist */
+.frueherer-tag {
+  background: var(--offen);
+  border: 1px solid var(--offen-rand);
+  border-radius: 12px;
+  padding: 10px 12px;
+  font-size: 15px;
+}
+
+.frueherer-tag button {
+  margin-left: 4px;
+  padding: 4px 10px;
+  font-size: 14px;
+}
+
+
+/* ===== Habits ===== */
+#habit-liste {
+  list-style: none;
+  padding: 0;
+  margin: 0 0 16px;
+}
+
+#habit-liste li {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-bottom: 6px;
+}
+
+/* Jedes Habit ist ein großer Knopf über die ganze Breite */
+#habit-liste button.habit {
+  flex: 1;                       /* nimmt den ganzen freien Platz */
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  text-align: left;
+  padding: 10px 12px;
+  font-size: 17px;
+  border-radius: 12px;
+}
+
+/* Das Kästchen links: leer, ✓ oder ½ */
+.kaestchen {
+  flex: none;
+  width: 26px;
+  height: 26px;
+  border: 2px solid var(--rand);
+  border-radius: 7px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: bold;
+}
+
+/* Erledigt: Kästchen voll in der Akzentfarbe */
+#habit-liste .erledigt .kaestchen {
+  background: var(--akzent);
+  border-color: var(--akzent);
+  color: var(--karte);
+}
+
+/* Teilweise: Kästchen mit farbigem Rand */
+#habit-liste .teilweise .kaestchen {
+  border-color: var(--akzent);
+  color: var(--akzent);
+}
+
+/* ✏️ und ✕ nur im Bearbeiten-Modus zeigen */
+#habit-liste button.bearbeiten {
+  display: none;
+  border: none;
+  background: none;
+  color: var(--text-leise);
+}
+
+#habit-liste.bearbeiten-modus button.bearbeiten {
+  display: block;
+}
+
+/* Formular zum Hinzufügen */
+#habit-neu {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
+#habit-neu input {
+  flex: 1;
+}
+
+/* Glücks-Rating */
+#happy {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  background: var(--karte);
+  border: 1px solid var(--rand);
+  border-radius: 12px;
+  padding: 12px 14px;
+}
+
+#happy-wert {
+  font-size: 22px;
+  font-weight: bold;
+  color: var(--akzent);
+}
+
+#happy-regler {
+  flex: 1 1 100%;
+  accent-color: var(--akzent);
+  padding: 0;
+  border: none;
+  margin-top: 8px;
+}
+
+#happy-regler.unbewertet {
+  opacity: 0.4;                  /* blass, solange heute noch nicht bewertet */
+}
+
+#import-uebernehmen,
+#gym-import-uebernehmen {
+  background: var(--akzent);
+  border-color: var(--akzent);
+  color: var(--karte);
+  font-weight: 600;
+}
+
+
+/* ===== Gym ===== */
+/* Farben der zwei Einheiten (Kurve und Legende) */
+:root {
+  --gym-a: #2e7d6b;
+  --gym-b: #4a6fa5;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --gym-a: #6fcfb4;
+    --gym-b: #8fb0e0;
+  }
+}
+
+/* Auswahl Gym A / Gym B: zwei gleich breite Knöpfe */
+#gym-einheiten {
+  display: flex;
+  gap: 8px;
+  margin: 8px 0 4px;
+}
+
+#gym-einheiten button {
+  flex: 1;
+  padding: 10px;
+  font-weight: 600;
+}
+
+#gym-einheiten button.aktiv {
+  background: var(--akzent);
+  border-color: var(--akzent);
+  color: var(--karte);
+}
+
+/* Infofeld unter der Auswahl */
+.gym-info {
+  background: var(--karte);
+  border: 1px solid var(--rand);
+  border-radius: 12px;
+  padding: 10px 14px;
+  margin: 8px 0 12px;
+  font-size: 14px;
+}
+
+.gym-info span {
+  display: block;
+  margin-top: 2px;
+  color: var(--text-leise);
+}
+
+/* Eine Übung = eine Karte */
+.gym-uebung {
+  background: var(--karte);
+  border: 1px solid var(--rand);
+  border-radius: 12px;
+  padding: 12px 14px;
+  margin-bottom: 10px;
+}
+
+.gym-uebung strong {
+  display: block;
+}
+
+/* Kleine graue Zeile: Gewichtsart · Pause · Notiz */
+.gym-meta {
+  display: block;
+  font-size: 13px;
+  color: var(--text-leise);
+  margin: 2px 0 6px;
+}
+
+/* Hinweis „Gewicht erhöhen / reduzieren“ */
+.gym-tipp {
+  display: block;
+  font-size: 14px;
+  color: var(--akzent);
+  margin-bottom: 6px;
+}
+
+/* Eine Satz-Zeile: „1 [kg] [Wdh.] [✓] Letztes Mal …“ */
+.gym-satz {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 6px;
+}
+
+.gym-nummer {
+  flex: none;
+  width: 16px;
+  font-size: 14px;
+  color: var(--text-leise);
+}
+
+.gym-satz input {
+  width: 54px;
+  padding: 8px;
+  text-align: center;
+}
+
+/* Vorgefüllter Vorschlag, noch nicht bestätigt: blass */
+.gym-satz input.vorschlag {
+  color: var(--text-leise);
+}
+
+.gym-haken {
+  flex: none;
+  width: 38px;
+  padding: 8px 0;
+  color: var(--text-leise);
+}
+
+/* Übung zum Abhaken (z. B. Dehnen): Name links, ✓ rechts */
+.gym-haken-karte {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+/* Gemachter Satz: ✓ in der Akzentfarbe, Felder mit grünem Rand */
+.gym-satz.gemacht .gym-haken,
+.gym-haken-karte.gemacht .gym-haken {
+  background: var(--akzent);
+  border-color: var(--akzent);
+  color: var(--karte);
+  font-weight: 700;
+}
+
+.gym-satz.gemacht input,
+.gym-haken-karte.gemacht {
+  border-color: var(--akzent);
+}
+
+.gym-letztes {
+  flex: 1;
+  font-size: 12px;
+  color: var(--text-leise);
+  text-align: right;
+}
+
+.gym-letztes.besser {
+  color: var(--akzent);
+  font-weight: 600;
+}
+
+/* Plan bearbeiten: eine Zeile pro Übung mit ▲ ▼ Name ✏️ ✕ */
+.gym-edit-zeile {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  background: var(--karte);
+  border: 1px solid var(--rand);
+  border-radius: 12px;
+  padding: 6px 8px;
+  margin-bottom: 6px;
+}
+
+.gym-edit-zeile button {
+  flex: none;
+  padding: 8px 10px;
+  border: none;
+  background: none;
+  color: var(--text-leise);
+}
+
+.gym-edit-zeile button:disabled {
+  opacity: 0.25;
+  cursor: default;
+}
+
+.gym-edit-name {
+  flex: 1;
+  font-size: 16px;
+}
+
+/* Formular für eine Übung */
+.gym-edit-form {
+  background: var(--karte);
+  border: 1px solid var(--akzent);
+  border-radius: 12px;
+  padding: 12px 14px;
+  margin-bottom: 10px;
+}
+
+.gym-edit-form label {
+  display: block;
+  margin-bottom: 8px;
+}
+
+.gym-edit-form label span {
+  display: block;
+  font-size: 13px;
+  color: var(--text-leise);
+  margin-bottom: 2px;
+}
+
+.gym-edit-form input,
+.gym-edit-form select {
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.gym-edit-knoepfe {
+  display: flex;
+  gap: 8px;
+}
+
+.gym-edit-knoepfe button[type="submit"] {
+  flex: 1;
+}
+
+/* Fortschritt */
+#gym-fortschritt {
+  margin-top: 16px;
+  padding: 12px 14px;
+  background: var(--karte);
+  border: 1px solid var(--rand);
+  border-radius: 14px;
+}
+
+#gym-fortschritt summary {
+  cursor: pointer;
+  font-size: 18px;
+  font-weight: bold;
+}
+
+/* Plan-Ring mit Text daneben */
+.gym-ring-zeile {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin: 10px 0 4px;
+}
+
+.gym-ring-zeile > div {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  font-size: 14px;
+  color: var(--text-leise);
+}
+
+.gym-ring-zeile strong {
+  font-size: 18px;
+  color: var(--text);
+}
+
+.gym-ring {
+  flex: none;
+  width: 104px;
+  height: 104px;
+}
+
+.gym-ring .ring-spur {
+  fill: none;
+  stroke: var(--rand);
+  stroke-width: 10;
+}
+
+.gym-ring .ring-fuellung {
+  fill: none;
+  stroke: var(--akzent);
+  stroke-width: 10;
+  stroke-linecap: round;
+}
+
+.gym-ring .ring-zahl {
+  fill: var(--text);
+  font-size: 22px;
+  font-weight: 700;
+}
+
+/* Gesamtkurve */
+.gym-kurve {
+  width: 100%;
+  height: auto;
+  display: block;
+  margin: 8px 0 0;
+}
+
+.gym-kurve .nulllinie {
+  stroke: var(--rand);
+  stroke-width: 1;
+  stroke-dasharray: 4 3;
+}
+
+.gym-kurve .verlauf {
+  fill: none;
+  stroke: var(--text-leise);
+  stroke-width: 2;
+  stroke-linejoin: round;
+}
+
+.gym-kurve .achse {
+  fill: var(--text-leise);
+  font-size: 10px;
+}
+
+.gym-kurve .punkt { stroke: var(--karte); stroke-width: 2; }
+.gym-kurve .punkt.A, .punkt-legende.A { fill: var(--gym-a); background: var(--gym-a); }
+.gym-kurve .punkt.B, .punkt-legende.B { fill: var(--gym-b); background: var(--gym-b); }
+
+/* Kleine farbige Punkte in der Legende */
+.punkt-legende {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  margin: 0 4px 0 8px;
+}
+
+/* Eine kleine Linie pro Übung: Name | Linie | Prozent */
+.gym-fortschritt-zeile {
+  display: grid;
+  grid-template-columns: 1fr 120px 3.6em;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  margin: 6px 0;
+}
+
+.gym-fortschritt-zeile .wert {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.gym-fortschritt-zeile .wert.minus {
+  color: var(--warnung);
+}
+
+.gym-linie {
+  width: 120px;
+  height: 28px;
+}
+
+.gym-linie .linie {
+  fill: none;
+  stroke: var(--akzent);
+  stroke-width: 2;
+  stroke-linejoin: round;
+  stroke-linecap: round;
+}
+
+.gym-linie .linie-punkt {
+  fill: var(--akzent);
+}
+
+
+/* ===== Affirmationen ===== */
+#affirmationen-text ul {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+#affirmationen-text li {
+  font-size: 18px;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--rand);
+}
+
+/* Die besondere Zeile am Ende („! …“) */
+.hervorgehoben {
+  margin: 20px 0;
+  padding: 16px;
+  font-size: 19px;
+  font-weight: 600;
+  text-align: center;
+  background: var(--fertig);
+  border: 1px solid var(--fertig-rand);
+  border-radius: 14px;
+}
+
+#affirmationen-gelesen {
+  display: block;
+  width: 100%;
+  margin-top: 8px;
+  padding: 14px;
+  font-weight: 600;
+  background: var(--akzent);
+  border-color: var(--akzent);
+  color: var(--karte);
+}
+
+/* Nach dem Antippen: dezent, damit der Lächel-Kasten auffälliger bleibt */
+#affirmationen-gelesen.fertig {
+  background: var(--karte);
+  border-color: var(--rand);
+  color: var(--akzent);
+}
+
+
+/* ===== Tagebuch ===== */
+.tagebuch-feld {
+  display: block;
+  width: 100%;
+  box-sizing: border-box;        /* Rand zählt zur Breite, sonst ragt das Feld rechts raus */
+  margin-bottom: 8px;
+}
+
+/* „+“-Knopf unter jeder Liste: ein weiteres Feld */
+.tagebuch-plus {
+  display: block;
+  width: 100%;
+  padding: 8px;
+  font-size: 22px;
+  line-height: 1;
+  color: var(--akzent);
+  background: none;
+  border: 1px dashed var(--akzent);
+}
+
+/* Archiv: jeder frühere Tag ein aufklappbarer Kasten */
+#tagebuch-archiv {
+  color: var(--text-leise);
+}
+
+#tagebuch-archiv details {
+  background: var(--karte);
+  color: var(--text);
+  border: 1px solid var(--rand);
+  border-radius: 12px;
+  padding: 12px 14px;
+  margin-bottom: 8px;
+}
+
+#tagebuch-archiv summary {
+  cursor: pointer;
+}
+
+#tagebuch-archiv strong {
+  display: block;
+  margin-top: 10px;
+}
+
+#tagebuch-archiv ul {
+  margin: 4px 0;
+}
+
+
+/* ===== Startseite ===== */
+#heute-datum {
+  color: var(--text-leise);
+  margin-top: -8px;
+}
+
+.heute-kasten {
+  display: block;
+  width: 100%;
+  text-align: left;
+  background: var(--offen);      /* gelblich = noch offen */
+  border: 1px solid var(--offen-rand);
+  border-radius: 14px;
+  padding: 14px 16px;
+  margin-bottom: 12px;
+}
+
+.heute-kasten.fertig {
+  background: var(--fertig);     /* grünlich = erledigt */
+  border-color: var(--fertig-rand);
+}
+
+.heute-kasten strong {
+  display: block;
+  font-size: 18px;
+}
+
+.heute-kasten ul {
+  margin: 6px 0 0;
+}
+
+/* Neutrale Kästen (Schlafenszeit, Infos aus der Mail): weder gelb noch grün */
+.heute-kasten.neutral {
+  box-sizing: border-box;
+  background: var(--karte);
+  border-color: var(--rand);
+}
+
+.heute-kasten.neutral input {
+  padding: 2px 6px;
+  margin: 0 2px;
+}
+
+/* Wochenrückblick */
+#wochenrueckblick {
+  margin-top: 4px;
+  padding: 12px 14px;
+  background: var(--karte);
+  border: 1px solid var(--rand);
+  border-radius: 14px;
+}
+
+#wochenrueckblick summary {
+  cursor: pointer;
+  font-size: 18px;
+  font-weight: bold;
+}
+
+#wochenrueckblick .tagesleiste {
+  margin-top: 12px;
+}
+
+#wochenrueckblick h3 {
+  margin: 16px 0 4px;
+}
+
+#wochenrueckblick ul {
+  margin: 0;
+  padding-left: 20px;
+}
+
+
+/* ===== Hilfsklasse ===== */
+/* Wer diese Klasse hat, wird nicht angezeigt (für die Tab-Navigation) */
+.versteckt {
+  display: none !important; /* !important = gewinnt immer, auch gegen Regeln mit #id */
+}

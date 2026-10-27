@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <!-- Zeichensatz: damit Umlaute (ä, ö, ü) richtig angezeigt werden -->
+  <meta charset="UTF-8">
+  <!-- Damit die Seite auf dem Handy nicht winzig verkleinert dargestellt wird -->
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+  <title>Mein Tag</title>
+  <!-- Verbindet die Seite mit der Datei für das Aussehen -->
+  <link rel="stylesheet" href="style.css">
+
+  <!-- Der „Ausweis“ der App: Name, Symbol, Farben (für „Zum Startbildschirm“) -->
+  <link rel="manifest" href="manifest.json">
+  <!-- Symbol für iPhone/iPad und für den Browser-Tab -->
+  <link rel="apple-touch-icon" href="apple-touch-icon.png">
+  <link rel="icon" href="icon-192.png">
+  <!-- Farbe der Statusleiste oben auf dem Handy -->
+  <meta name="theme-color" content="#000000">
+</head>
+<body>
+  <h1>Hi Lars, deine Tages-App :)</h1>
+
+  <section id="heute">
+    <h2>Heute</h2>
+    <p id="heute-datum"></p>
+
+    <!-- App-Code aus der Morgen-/Abend-Mail übernehmen (bleibt nur auf diesem Gerät) -->
+    <button id="mailcode-knopf" class="nebenknopf">📲 Aus Mail einfügen</button>
+    <p id="mailcode-meldung" class="hinweis"></p>
+    <div id="mailcode-feld" class="versteckt">
+      <p class="hinweis">Kopiere den App-Code aus der Mail (beginnt mit TAGESAPP1.) und füge ihn hier ein:</p>
+      <textarea id="mailcode-text" rows="3"></textarea>
+      <button id="mailcode-uebernehmen">Übernehmen</button>
+    </div>
+    <!-- Die Kästen füllt app.js automatisch -->
+    <div id="heute-kaesten"></div>
+
+    <!-- Wochenrückblick: aufklappbar, sonntags automatisch offen -->
+    <details id="wochenrueckblick">
+      <summary>📊 Wochenrückblick</summary>
+      <div class="tagesleiste">
+        <button id="woche-zurueck" title="Vorherige Woche">‹</button>
+        <span id="woche-anzeige"></span>
+        <button id="woche-vor" title="Nächste Woche">›</button>
+      </div>
+      <div id="wochenrueckblick-inhalt"></div>
+    </details>
+  </section>
+
+  <section id="habits">
+    <h2>Habits</h2>
+    <!-- Datumsleiste zum Blättern (füllt app.js) – gleiche Leiste gibt es im Tagebuch -->
+    <div class="tagesleiste">
+      <button class="tag-zurueck" title="Vorheriger Tag">‹</button>
+      <span class="tag-anzeige"></span>
+      <button class="tag-vor" title="Nächster Tag">›</button>
+    </div>
+    <p class="frueherer-tag versteckt">
+      Du bearbeitest einen früheren Tag. <button class="zu-heute">Zurück zu heute</button>
+    </p>
+    <p class="hinweis">Tippen: leer → ✓ erledigt → ½ teilweise → leer</p>
+    <!-- Die Habits füllt app.js hier automatisch hinein -->
+    <ul id="habit-liste"></ul>
+
+    <!-- Tägliches Glücks-Rating -->
+    <div id="happy">
+      <label for="happy-regler">Wie happy war ich?</label>
+      <output id="happy-wert">–</output>
+      <input id="happy-regler" type="range" min="1" max="10" step="0.5" value="7">
+    </div>
+
+    <!-- Bearbeiten: Habits hinzufügen, umbenennen, entfernen -->
+    <button id="habits-bearbeiten-knopf" class="nebenknopf">Habits bearbeiten</button>
+    <form id="habit-neu" class="versteckt">
+      <input id="habit-neu-name" placeholder="Neues Habit, z. B. Wasser trinken" required>
+      <button type="submit">Hinzufügen</button>
+    </form>
+
+    <!-- Alten Verlauf aus der Notizen-App übernehmen (passiert nur auf diesem Gerät) -->
+    <details id="import">
+      <summary>Verlauf importieren</summary>
+      <p class="hinweis">
+        Kopiere die ganze Tabelle aus deiner Notizen-App (mit der Datumszeile oben)
+        und füge sie hier ein. Die Daten bleiben nur auf diesem Gerät.
+      </p>
+      <textarea id="import-text" rows="6" placeholder="Tabelle hier einfügen …"></textarea>
+      <button id="import-pruefen" class="nebenknopf">Prüfen</button>
+      <p id="import-vorschau"></p>
+      <button id="import-uebernehmen" class="versteckt">Übernehmen</button>
+    </details>
+  </section>
+
+  <section id="tagebuch">
+    <h2>Tagebuch</h2>
+    <div class="tagesleiste">
+      <button class="tag-zurueck" title="Vorheriger Tag">‹</button>
+      <span class="tag-anzeige"></span>
+      <button class="tag-vor" title="Nächster Tag">›</button>
+    </div>
+    <p class="frueherer-tag versteckt">
+      Du bearbeitest einen früheren Tag. <button class="zu-heute">Zurück zu heute</button>
+    </p>
+    <!--
+      Pro Liste ein Behälter für die Felder (füllt app.js) und ein „+“-Knopf darunter.
+      data-art sagt, zu welcher Liste der Knopf gehört (dankbar oder fuerMich).
+    -->
+    <h3>Wofür ich dankbar bin</h3>
+    <div id="tagebuch-dankbar"></div>
+    <button class="tagebuch-plus" data-art="dankbar" title="Weiteres Feld">+</button>
+
+    <h3>Was ich für mich getan habe</h3>
+    <div id="tagebuch-fuerMich"></div>
+    <button class="tagebuch-plus" data-art="fuerMich" title="Weiteres Feld">+</button>
+
+    <h3>Frühere Tage</h3>
+    <!-- Das Archiv füllt app.js hier automatisch hinein -->
+    <div id="tagebuch-archiv"></div>
+  </section>
+
+  <section id="affirmationen">
+    <h2>Affirmationen</h2>
+    <!-- Die Sätze füllt app.js hier automatisch hinein -->
+    <div id="affirmationen-text"></div>
+    <button id="affirmationen-gelesen">Heute gelesen ✓</button>
+
+    <!-- Text bearbeiten: wird nur auf diesem Gerät gespeichert -->
+    <details id="affirmationen-bearbeiten">
+      <summary>Affirmationen bearbeiten</summary>
+      <p class="hinweis">
+        Ein Satz pro Zeile. Zeilen mit <b>#</b> am Anfang werden Zwischenüberschriften,
+        Zeilen mit <b>!</b> am Anfang werden hervorgehoben.
+      </p>
+      <textarea id="affirmationen-eingabe" rows="12"></textarea>
+      <button id="affirmationen-speichern">Speichern</button>
+    </details>
+  </section>
+
+  <!-- Untere Leiste zum Umschalten. data-bereich sagt, welche section der Knopf zeigt. -->
+  <section id="gym">
+    <h2>Gym</h2>
+    <div class="tagesleiste">
+      <button class="tag-zurueck" title="Vorheriger Tag">‹</button>
+      <span class="tag-anzeige"></span>
+      <button class="tag-vor" title="Nächster Tag">›</button>
+    </div>
+    <p class="frueherer-tag versteckt">
+      Du bearbeitest einen früheren Tag. <button class="zu-heute">Zurück zu heute</button>
+    </p>
+
+    <!-- Welche Einheit? Der Plan schlägt sie nach Datum vor (Mo/Mi/Fr, A und B im Wechsel).
+         Die Beschriftung der Knöpfe setzt app.js aus dem Plan. -->
+    <div id="gym-einheiten">
+      <button data-einheit="A">Gym A</button>
+      <button data-einheit="B">Gym B</button>
+    </div>
+    <p id="gym-hinweis" class="hinweis"></p>
+
+    <!-- Infofeld: gilt für alle Übungen -->
+    <div class="gym-info">
+      <strong>2 Sätze à 6–10 Wiederholungen · ca. 90 Sek. Satzpause</strong>
+      <span>Vorher: 5–10 min laufen</span>
+    </div>
+
+    <!-- Die Übungen füllt app.js automatisch -->
+    <div id="gym-uebungen"></div>
+
+    <!-- Plan ändern: ✏️ ▲ ▼ ✕ und neue Übungen -->
+    <button id="gym-bearbeiten-knopf" class="nebenknopf">✏️ Plan bearbeiten</button>
+
+    <!-- Plan und bisherige Trainings per Code übernehmen (nur im Bearbeiten-Modus sichtbar) -->
+    <details id="gym-import" class="versteckt">
+      <summary>Plan und Training importieren</summary>
+      <p class="hinweis">
+        Füge hier den Plan-Code ein (beginnt mit GYMPLAN1.). Er ersetzt deinen Plan,
+        schon gemachte Sätze bleiben erhalten. Alles bleibt auf diesem Gerät.
+      </p>
+      <textarea id="gym-import-text" rows="4" placeholder="GYMPLAN1.…"></textarea>
+      <button id="gym-import-pruefen" class="nebenknopf">Prüfen</button>
+      <p id="gym-import-meldung" class="hinweis"></p>
+      <button id="gym-import-uebernehmen" class="versteckt">Übernehmen</button>
+    </details>
+
+    <!-- Fortschritt: Plan-Ring, Gesamtkurve und eine kleine Linie pro Übung -->
+    <details id="gym-fortschritt" open>
+      <summary>📈 Fortschritt</summary>
+      <div id="gym-fortschritt-inhalt"></div>
+    </details>
+  </section>
+
+  <!-- Die Symbole sind kleine selbst gezeichnete SVG-Bilder (Linien statt Fotos),
+       sie färben sich automatisch mit der Textfarbe (currentColor). -->
+  <nav>
+    <button data-bereich="heute">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M2 12h2M20 12h2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg>
+      Heute
+    </button>
+    <button data-bereich="habits">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="4"/><path d="M8 12.5l3 3 5-6"/></svg>
+      Habits
+    </button>
+    <button data-bereich="tagebuch">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5.5C4 4.7 4.7 4 5.5 4H11v16H5.5c-.8 0-1.5-.7-1.5-1.5zM20 5.5c0-.8-.7-1.5-1.5-1.5H13v16h5.5c.8 0 1.5-.7 1.5-1.5z"/></svg>
+      Tagebuch
+    </button>
+    <button data-bereich="affirmationen">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 20s-7-4.4-7-10a4 4 0 0 1 7-2.6A4 4 0 0 1 19 10c0 5.6-7 10-7 10z"/></svg>
+      Affirm.
+    </button>
+    <button data-bereich="gym">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 7v10M17 7v10M4 9.5v5M20 9.5v5M7 12h10"/></svg>
+      Gym
+    </button>
+  </nav>
+
+  <!-- Das JavaScript kommt ganz ans Ende, damit die Bereiche schon geladen sind -->
+  <script src="app.js"></script>
+</body>
+</html>
