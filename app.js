@@ -2068,6 +2068,7 @@ function gymSplit() {
 
 function zeigeEinstellungen() {
   const e = ladeEinstellungen();
+  zeigeAppVersion();
 
   // Bereiche
   const reiterListe = document.getElementById("einstellungen-reiter");
@@ -2727,6 +2728,63 @@ function zeigeHeute() {
 }
 
 
+// ===== App-Version und Aktualisieren =====
+// Bei jeder Änderung die Nummer hier UND in service-worker.js (LAGER) erhöhen.
+const APP_VERSION = "v11";
+
+// Zeigt die laufende Version und – wenn du online bist – die neueste im Netz
+function zeigeAppVersion() {
+  const anzeige = document.getElementById("app-version");
+  anzeige.textContent = "Installiert: " + APP_VERSION;
+  fetch("service-worker.js", { cache: "no-store" })
+    .then(function (antwort) { return antwort.text(); })
+    .then(function (text) {
+      const treffer = text.match(/tages-app-(v\d+)/);
+      if (treffer) {
+        anzeige.textContent = "Installiert: " + APP_VERSION + " · Neueste online: " + treffer[1] +
+          (treffer[1] === APP_VERSION ? " (aktuell)" : " (Update verfügbar)");
+      }
+    })
+    .catch(function () { /* offline: nur die installierte Version zeigen */ });
+}
+
+// „App aktualisieren“: holt alle Programm-Dateien frisch aus dem Netz, räumt die alte Kopie
+// (Service Worker und Lager) weg und lädt neu. Deine Einträge liegen im localStorage und
+// werden dabei NICHT angefasst.
+document.getElementById("app-aktualisieren").addEventListener("click", function () {
+  const meldung = document.getElementById("app-aktualisieren-meldung");
+  const dateien = ["index.html", "style.css", "app.js", "service-worker.js", "manifest.json"];
+  meldung.textContent = "Hole die neueste Version …";
+
+  // Erst prüfen, dass alles aus dem Netz kommt – sonst bliebe die App ohne Kopie zurück
+  Promise.all(dateien.map(function (datei) {
+    return fetch(datei, { cache: "reload" }).then(function (antwort) {
+      if (!antwort.ok) throw new Error(datei);
+    });
+  })).then(function () {
+    const aufraeumen = [];
+    if ("serviceWorker" in navigator) {
+      aufraeumen.push(navigator.serviceWorker.getRegistrations().then(function (liste) {
+        return Promise.all(liste.map(function (eintrag) { return eintrag.unregister(); }));
+      }));
+    }
+    if (window.caches) {
+      aufraeumen.push(caches.keys().then(function (namen) {
+        return Promise.all(namen
+          .filter(function (name) { return name.startsWith("tages-app-"); })
+          .map(function (name) { return caches.delete(name); }));
+      }));
+    }
+    return Promise.all(aufraeumen);
+  }).then(function () {
+    meldung.textContent = "Fertig – lade neu …";
+    location.href = location.pathname + "?neu=" + Date.now();
+  }).catch(function () {
+    meldung.textContent = "Das ging nicht – bist du online? Es wurde nichts verändert.";
+  });
+});
+
+
 // ===== Navigation =====
 
 // Zeigt nur den Bereich mit diesem Namen, z. B. zeigeBereich("habits")
@@ -2785,5 +2843,5 @@ zeigeBereich("heute");
 // ===== Offline =====
 // Den „Hausmeister“ (service-worker.js) anmelden, falls der Browser das kann
 if ("serviceWorker" in navigator) {
-  navigator.serviceWorker.register("service-worker.js");
+  navigator.serviceWorker.register("service-worker.js", { updateViaCache: "none" });
 }
