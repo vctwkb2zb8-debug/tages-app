@@ -1399,3 +1399,77 @@ nav button.aktiv {
 #gym-import-pruefen {
   --knopf-symbol: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M5 12.5l4.5 4.5L19 7.5'/%3E%3C/svg%3E");
 }
+
+
+/* ===== Habit-Verlauf: Tabelle der letzten Tage ===== */
+#habits-verlauf {
+  margin-top: 20px;
+  border-top: 1px solid var(--rand);
+  padding-top: 18px;
+}
+
+#habits-verlauf > summary {
+  font-size: 17px;
+  font-weight: 500;
+  cursor: pointer;
+}
+
+/* Seitlich wischen; die Namen links bleiben stehen */
+.verlauf-wischen {
+  overflow-x: auto;
+  margin: 12px -20px 0;
+  padding: 0 20px;
+  -webkit-overflow-scrolling: touch;
+}
+
+.verlauf-tabelle {
+  border-collapse: collapse;
+  font-size: 12px;
+}
+
+.verlauf-tabelle th,
+.verlauf-tabelle td {
+  min-width: 28px;
+  height: 30px;
+  padding: 0 2px;
+  text-align: center;
+  border-bottom: 1px solid var(--rand);
+  color: var(--text-leise);
+  font-weight: 400;
+}
+
+/* Spalte mit den Namen: bleibt beim Wischen links */
+.verlauf-tabelle tr > :first-child {
+  position: sticky;
+  left: 0;
+  z-index: 1;
+  min-width: 96px;
+  max-width: 96px;
+  padding-right: 8px;
+  text-align: left;
+  background: var(--hintergrund);
+  color: var(--text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.verlauf-tabelle th.heute {
+  color: var(--text);
+  font-weight: 600;
+}
+
+.verlauf-tabelle td.erledigt {
+  color: var(--akzent);
+}
+
+.verlauf-tabelle td.teilweise {
+  color: var(--text-leise);
+}
+
+.verlauf-tabelle .symbol {
+  width: 15px;
+  height: 15px;
+  vertical-align: middle;
+  stroke-width: 2.4;
+}

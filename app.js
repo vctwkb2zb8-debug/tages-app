@@ -239,7 +239,21 @@ function zeigeHabits() {
       zeigeHabits();
     });
 
-    // Knöpfe Stift und Kreuz (nur sichtbar im Bearbeiten-Modus)
+    // Knöpfe hoch, runter, Stift und Kreuz (nur sichtbar im Bearbeiten-Modus)
+    const alleHabits = ladeHabits();
+    const position = alleHabits.findIndex(function (h) { return h.id === habit.id; });
+    const verschiebeKnopf = function (symbolName, titel, richtung, gesperrt) {
+      const k = document.createElement("button");
+      k.append(symbol(symbolName));
+      k.title = titel;
+      k.className = "bearbeiten";
+      k.disabled = gesperrt;
+      k.addEventListener("click", function () { verschiebeHabit(habit.id, richtung); });
+      return k;
+    };
+    const hochKnopf = verschiebeKnopf("hoch", "Nach oben", -1, position === 0);
+    const runterKnopf = verschiebeKnopf("runter", "Nach unten", 1, position === alleHabits.length - 1);
+
     const umbenennenKnopf = document.createElement("button");
     umbenennenKnopf.append(symbol("stift"));
     umbenennenKnopf.title = "Umbenennen";
@@ -257,11 +271,26 @@ function zeigeHabits() {
     });
 
     const zeile = document.createElement("li");
-    zeile.append(knopf, umbenennenKnopf, entfernenKnopf);
+    zeile.append(hochKnopf, runterKnopf, knopf, umbenennenKnopf, entfernenKnopf);
     liste.append(zeile);
   }
 
   zeigeHappy();
+  if (document.getElementById("habits-verlauf").open) zeigeHabitVerlauf();
+}
+
+// Tauscht ein Habit mit seinem Nachbarn. Der Fortschritt hängt an der id des Habits
+// (nicht an der Position), darum bleibt er beim Verschieben vollständig erhalten.
+function verschiebeHabit(id, richtung) {
+  const habits = ladeHabits().slice();
+  const i = habits.findIndex(function (h) { return h.id === id; });
+  const j = i + richtung;
+  if (i === -1 || j < 0 || j >= habits.length) return;
+  const gemerkt = habits[i];
+  habits[i] = habits[j];
+  habits[j] = gemerkt;
+  speichern("checkliste-punkte", habits);
+  zeigeHabits();
 }
 
 function fuegeHabitHinzu(name) {
@@ -337,6 +366,130 @@ document.getElementById("happy-regler").addEventListener("input", function () {
   alle[gewaehlterTag] = Number(this.value);
   speichern("happy", alle);
   zeigeHappy();
+  if (document.getElementById("habits-verlauf").open) zeigeHabitVerlauf();
+});
+
+
+// ===== Habit-Verlauf (aufklappbar, unten im Reiter Habits) =====
+// Eine Tabelle der letzten 14 Tage: eine Zeile pro Habit, eine Spalte pro Tag.
+// ✓ = erledigt, ½ = teilweise, leer = nicht gemacht. Oben die Stimmung (Happy-Rating) als Kurve und Zahlen.
+const VERLAUF_TAGE = 14;
+const WOCHENTAG_KURZ = ["Mo", "Di", "Mi", "Do", "Fr", "Sa", "So"];
+
+// Die letzten VERLAUF_TAGE Tage, ältester zuerst, heute ganz rechts
+function verlaufTage() {
+  const tage = [];
+  for (let i = VERLAUF_TAGE - 1; i >= 0; i--) tage.push(verschiebeTag(heute(), -i));
+  return tage;
+}
+
+// Kurve der Happy-Werte (1–10): nur Tage mit Rating, aufeinanderfolgende Tage sind verbunden
+function stimmungsKurve(tage, happy) {
+  const breite = 320, hoehe = 90, links = 22, rechts = 8, oben = 8, unten = 8;
+  const svg = svgElement("svg", { viewBox: "0 0 " + breite + " " + hoehe, class: "gym-kurve" });
+  const x = function (i) { return links + i * (breite - links - rechts) / (tage.length - 1); };
+  const y = function (w) { return oben + (10 - w) / 9 * (hoehe - oben - unten); };
+
+  for (const marke of [1, 5.5, 10]) {
+    svg.append(svgElement("line", { x1: links, y1: y(marke), x2: breite - rechts, y2: y(marke), class: "nulllinie" }));
+  }
+  for (const marke of [1, 10]) {
+    const t = svgElement("text", { x: 0, y: y(marke) + 4, class: "achse" });
+    t.textContent = marke;
+    svg.append(t);
+  }
+
+  let strecke = [];
+  const beendeStrecke = function () {
+    if (strecke.length > 1) svg.append(svgElement("polyline", { points: strecke.join(" "), class: "verlauf" }));
+    strecke = [];
+  };
+  tage.forEach(function (datum, i) {
+    const wert = happy[datum];
+    if (wert === undefined) { beendeStrecke(); return; }
+    strecke.push(x(i) + "," + y(wert));
+  });
+  beendeStrecke();
+  tage.forEach(function (datum, i) {
+    const wert = happy[datum];
+    if (wert !== undefined) svg.append(svgElement("circle", { cx: x(i), cy: y(wert), r: 3.5, class: "punkt" }));
+  });
+  return svg;
+}
+
+function zeigeHabitVerlauf() {
+  const inhalt = document.getElementById("habits-verlauf-inhalt");
+  inhalt.innerHTML = "";
+  const tage = verlaufTage();
+  const happy = laden("happy", {});
+  const alleTage = laden("habits-tage", {});
+
+  const kopf = document.createElement("p");
+  kopf.className = "hinweis";
+  kopf.textContent = "Stimmung der letzten " + VERLAUF_TAGE + " Tage";
+  inhalt.append(kopf);
+  if (tage.some(function (d) { return happy[d] !== undefined; })) {
+    inhalt.append(stimmungsKurve(tage, happy));
+  } else {
+    const leer = document.createElement("p");
+    leer.className = "hinweis";
+    leer.textContent = "Noch kein Happy-Rating in diesem Zeitraum.";
+    inhalt.append(leer);
+  }
+
+  const tabelle = document.createElement("table");
+  tabelle.className = "verlauf-tabelle";
+
+  // Kopfzeile: Wochentag und Tag
+  const kopfZeile = document.createElement("tr");
+  kopfZeile.append(document.createElement("th"));
+  for (const datum of tage) {
+    const th = document.createElement("th");
+    th.className = datum === heute() ? "heute" : "";
+    th.append(WOCHENTAG_KURZ[wochentag(datum)], document.createElement("br"), String(Number(datum.slice(8, 10))));
+    kopfZeile.append(th);
+  }
+  tabelle.append(kopfZeile);
+
+  // Zeile „Stimmung“ mit den Zahlen
+  const stimmung = document.createElement("tr");
+  const stimmungName = document.createElement("th");
+  stimmungName.textContent = "Stimmung";
+  stimmung.append(stimmungName);
+  for (const datum of tage) {
+    const td = document.createElement("td");
+    td.textContent = happy[datum] === undefined ? "" : deutscheZahl(happy[datum]);
+    stimmung.append(td);
+  }
+  tabelle.append(stimmung);
+
+  // Eine Zeile pro Habit
+  for (const habit of ladeHabits()) {
+    const zeile = document.createElement("tr");
+    const name = document.createElement("th");
+    name.textContent = habit.name;
+    name.title = habit.name;
+    zeile.append(name);
+    for (const datum of tage) {
+      const zustand = (alleTage[datum] || {})[habit.id];
+      const td = document.createElement("td");
+      if (zustand === "x") { td.className = "erledigt"; td.append(symbol("haken")); }
+      if (zustand === "/") { td.className = "teilweise"; td.textContent = "½"; }
+      zeile.append(td);
+    }
+    tabelle.append(zeile);
+  }
+
+  const wischen = document.createElement("div");
+  wischen.className = "verlauf-wischen";
+  wischen.append(tabelle);
+  inhalt.append(wischen);
+  wischen.scrollLeft = wischen.scrollWidth; // ganz nach rechts: heute sichtbar
+}
+
+// Beim Aufklappen aufbauen (und bei jeder Änderung an den Habits, solange offen)
+document.getElementById("habits-verlauf").addEventListener("toggle", function () {
+  if (this.open) zeigeHabitVerlauf();
 });
 
 
